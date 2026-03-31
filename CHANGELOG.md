@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v0.1.3 (2026-03-31)
+
+### Bug Fixes
+
+- Move to src layout so Streamlit Cloud uses pip package
+  ([`78735a6`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/78735a6ac2852646dde299844a9f93e0c14abbba))
+
+Moved st_aggrid/ to src/st_aggrid/ so that when Streamlit Cloud clones the repo, Python imports
+  st_aggrid from the pip-installed wheel (which has frontend build artifacts) instead of the local
+  source directory (which doesn't).
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+### Chores
+
+- Bump demo app requirement to v0.1.2
+  ([`2afa3af`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/2afa3afca86f4e5888ac48f4832efe61c7488c73))
+
+
 ## v0.1.2 (2026-03-31)
 
 ### Bug Fixes
