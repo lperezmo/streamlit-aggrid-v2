@@ -185,6 +185,7 @@ coverage/
 # Lockfiles
 #yarn.lock
 package-lock.json
+!st_aggrid/frontend/package-lock.json
 
 ########################################################################
 # JetBrains

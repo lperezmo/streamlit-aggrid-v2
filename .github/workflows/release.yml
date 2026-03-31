@@ -87,5 +87,6 @@ jobs:
           VERSION=${{ needs.release.outputs.version }}
           sed -i "s/streamlit-aggrid-v2>=.*/streamlit-aggrid-v2>=${VERSION}/" examples/requirements.txt
           git add examples/requirements.txt
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore: bump demo app requirement to v${VERSION}"
           git push
