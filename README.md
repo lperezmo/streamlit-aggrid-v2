@@ -40,6 +40,29 @@ AgGrid(df)
 streamlit run your_app.py
 ```
 
+## Why v2?
+
+The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggrid) hasn't been updated since 2023 and is built on Streamlit's legacy iframe-based component model. This rewrite modernizes the architecture while keeping the same Python API.
+
+| | **streamlit-aggrid** (original) | **streamlit-aggrid-v2** |
+|---|---|---|
+| **Component model** | CCv1 — iframe + postMessage | CCv2 — direct DOM rendering |
+| **AG Grid version** | v31 | v34.3.1 |
+| **Themes** | 3 themes, no dark mode for quartz | 4 themes, automatic dark/light detection |
+| **Build toolchain** | webpack / CRA | Vite + ESM |
+| **React** | React 17 | React 18 |
+| **Known bugs** | 25 open issues in codebase | All 25 fixed |
+| **Event listener cleanup** | Leaks on unmount | Proper cleanup via `componentWillUnmount` |
+| **State management** | Direct `this.state.api` mutation | `gridApiRef` pattern (React-safe) |
+| **Style/script injection** | Duplicates on re-render | Deduplicated |
+| **Mutable defaults** | `grid_response={}`, `update_on=[]` | Fixed with `None` + inline init |
+| **Path handling** | Wrong variable, missing method | Corrected |
+| **Custom themes** | Not supported | `StAggridTheme` with color schemes, icon sets, params |
+| **Maintenance** | Inactive since 2023 | Active, semantic versioning, CI/CD |
+| **Python API** | `from st_aggrid import AgGrid` | Same — fully backward compatible |
+
+**Migration:** Change `pip install streamlit-aggrid` to `pip install streamlit-aggrid-v2`. No code changes needed.
+
 ## Features
 
 - **No iframes** — AG Grid renders directly in the Streamlit DOM via CCv2, eliminating postMessage overhead.
