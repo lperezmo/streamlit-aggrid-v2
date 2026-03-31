@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.1.4 (2026-03-31)
+
+### Bug Fixes
+
+- Match component name to distribution for CCv2 resolver
+  ([`1a53cc5`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/1a53cc56fa5ad46a9395ae3aec655a3bda3330da))
+
+Streamlit CCv2 validates that the inner pyproject.toml [project].name matches the distribution name.
+  Changed from "st-aggrid" to "streamlit-aggrid-v2" and updated the component registration key.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+### Chores
+
+- Bump demo app requirement to v0.1.3
+  ([`fbb1b72`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/fbb1b72ecc21442be3789438e36208bfb06dc6cd))
+
+
 ## v0.1.3 (2026-03-31)
 
 ### Bug Fixes
