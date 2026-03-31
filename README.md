@@ -1,8 +1,16 @@
 # streamlit-aggrid-v2
 
-AG Grid component for Streamlit — interactive tables, editing, filtering & more.
+[![PyPI version](https://img.shields.io/pypi/v/streamlit-aggrid-v2.svg)](https://pypi.org/project/streamlit-aggrid-v2/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/streamlit-aggrid-v2.svg)](https://pypi.org/project/streamlit-aggrid-v2/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.51%2B-FF4B4B.svg?logo=streamlit)](https://streamlit.io)
 
-Built on [AG Grid](https://www.ag-grid.com/) v34.3.1.
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://st-aggrid.streamlit.app/)
+
+AG Grid component for Streamlit — interactive tables, editing, filtering, sorting, grouping & more.
+
+Built on [AG Grid](https://www.ag-grid.com/) v34.3.1 with [Streamlit Custom Components v2](https://docs.streamlit.io/develop/concepts/custom-components).
 
 ## Acknowledgments
 
@@ -13,6 +21,8 @@ This project is a continuation of [streamlit-aggrid](https://github.com/PablocFo
 ```bash
 pip install streamlit-aggrid-v2
 ```
+
+> **Note:** The Python import stays `st_aggrid` — only the `pip install` name changed.
 
 ## Quick Start
 
@@ -26,21 +36,60 @@ df = pd.read_csv(
 AgGrid(df)
 ```
 
-> **Note:** The Python import stays `st_aggrid` — only the `pip install` name changed.
-
 ```bash
-streamlit run example.py
+streamlit run your_app.py
 ```
 
-## What's New in v2
+## Features
 
-- **No iframes** — AG Grid renders directly in the Streamlit DOM via Custom Components v2 (CCv2), eliminating postMessage serialization overhead for large datasets.
-- **Better theming** — CSS `--st-*` variables auto-adapt to the active Streamlit theme. All four AG Grid themes (quartz, alpine, balham, material) supported with automatic dark mode detection.
+- **No iframes** — AG Grid renders directly in the Streamlit DOM via CCv2, eliminating postMessage overhead.
+- **Theming** — All four AG Grid themes (quartz, alpine, balham, material) with automatic dark/light mode detection. Custom themes via `StAggridTheme` with color schemes, icon sets, and param overrides.
+- **Editing** — Cell editing with `singleClickEdit`, value parsers, and change detection.
+- **Row selection** — Single, multiple, and checkbox selection with pre-selected rows.
+- **Filtering & sorting** — Column filters, floating filters, quick search, and multi-column sort.
+- **Column configuration** — Pinning, resizing, reordering, auto-sizing, and column groups via `GridOptionsBuilder`.
+- **Cell renderers** — Custom cell rendering with `JsCode` (stars, badges, progress bars, buttons).
+- **Row styling** — Conditional row/cell styling via `getRowStyle`, `rowClassRules`, and `cellStyle`.
+- **Enterprise features** — Row grouping, pivot mode, status bar, side bar, Excel export, cell selection, sparklines (requires AG Grid license).
+- **Data return modes** — `AS_INPUT`, `FILTERED`, `FILTERED_AND_SORTED`, `MINIMAL`, and `CUSTOM` via the collector pattern.
 - **Modern build** — Vite + ESM replaces the legacy webpack/CRA toolchain.
-- **Bug fixes** — 25 bugs fixed from the original codebase (mutable defaults, Path handling, event listener leaks, theme issues, and more).
-- **Maintained** — Active development with semantic versioning and automated releases.
+- **Bug fixes** — 25 bugs fixed from the original codebase.
+- **Backward compatible** — Existing `AgGrid()`, `GridOptionsBuilder`, `JsCode` code works with just a `pip install` change.
 
-The public Python API (`AgGrid()`, `GridOptionsBuilder`, etc.) is fully backward compatible. Existing code should work by changing only the `pip install` line.
+## API Overview
+
+```python
+from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+from st_aggrid import GridUpdateMode, DataReturnMode, ColumnsAutoSizeMode
+
+# Build grid options from a DataFrame
+gb = GridOptionsBuilder.from_dataframe(df)
+gb.configure_pagination(paginationAutoPageSize=True)
+gb.configure_selection("multiple", use_checkbox=True)
+gb.configure_default_column(filter=True, sortable=True, floatingFilter=True)
+grid_options = gb.build()
+
+# Render the grid
+response = AgGrid(
+    df,
+    gridOptions=grid_options,
+    height=400,
+    theme="quartz",                          # or "alpine", "balham", "material"
+    update_mode=GridUpdateMode.MODEL_CHANGED,
+    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    allow_unsafe_jscode=True,                # required for JsCode renderers
+)
+
+# Access results
+selected_rows = response.selected_rows
+filtered_data = response.data
+```
+
+## Live Demo
+
+Check out the full showcase with 12 interactive examples:
+
+**[st-aggrid.streamlit.app](https://st-aggrid.streamlit.app/)**
 
 ## License
 
