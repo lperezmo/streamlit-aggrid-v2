@@ -133,7 +133,7 @@ if result.data is not None:
         with st.expander(f"Rows flagged for deletion ({len(deleted)})", expanded=True):
             st.dataframe(
                 deleted.drop(columns=["To Be Deleted"]),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 

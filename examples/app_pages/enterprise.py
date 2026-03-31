@@ -182,7 +182,7 @@ elif feature == "Excel export":
 
     col1, col2 = st.columns([3, 1])
     with col2:
-        export_btn = st.button("Export to Excel", type="primary", use_container_width=True)
+        export_btn = st.button("Export to Excel", type="primary", width="stretch")
 
     with st.container(border=True):
         result = AgGrid(
