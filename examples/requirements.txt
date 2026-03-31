@@ -1,2 +1,2 @@
 streamlit>=1.51
-streamlit-aggrid-v2>=0.1.3
+streamlit-aggrid-v2>=0.1.4
