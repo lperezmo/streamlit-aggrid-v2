@@ -55,7 +55,7 @@ _HEADER_GRADIENT = (
     else "linear-gradient(135deg, #2563eb, #1d4ed8)"
 )
 st.html(f"""
-<div style="text-align:center; padding:0.75rem 0 0.25rem;">
+<div style="text-align:center; padding:1.25rem 0 0.25rem;">
     <h2 style="
         margin:0; font-size:1.5rem; font-weight:700;
         background:{_HEADER_GRADIENT};
