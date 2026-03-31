@@ -13,6 +13,14 @@
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
+- Build wheel directly so frontend artifacts are included
+  ([`368227d`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/368227da2e8a31c0ba4dfc9ce0d06c520fd84875))
+
+python -m build creates sdist first then builds wheel from it, which strips gitignored files like
+  frontend/build/. Building --wheel first ensures hatchling's artifacts directive works.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
 ### Chores
 
 - Trigger release pipeline
