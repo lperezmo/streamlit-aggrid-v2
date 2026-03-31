@@ -1,7 +1,6 @@
 # streamlit-aggrid-v2
 
 [![PyPI version](https://img.shields.io/pypi/v/streamlit-aggrid-v2.svg)](https://pypi.org/project/streamlit-aggrid-v2/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/streamlit-aggrid-v2.svg)](https://pypi.org/project/streamlit-aggrid-v2/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.51%2B-FF4B4B.svg?logo=streamlit)](https://streamlit.io)
