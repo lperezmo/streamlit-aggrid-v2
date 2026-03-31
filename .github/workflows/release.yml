@@ -1,0 +1,91 @@
+name: Release & Publish
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v6
+      with: { python-version: '3.13' }
+
+    - name: Semantic Release
+      id: release
+      uses: python-semantic-release/python-semantic-release@v9
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: [release]
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      # Build frontend
+      - uses: actions/setup-node@v6
+        with: { node-version: '22' }
+      - run: npm ci && npm run build
+        working-directory: st_aggrid/frontend
+
+      # Build Python package
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.13' }
+      - run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      # Upload dists to the GitHub Release that semantic-release already created
+      - name: Upload assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ needs.release.outputs.tag }}" dist/*
+          --clobber
+
+      # Publish to PyPI
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+          attestations: false
+
+  bump-demo:
+    needs: [release]
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump demo app version requirement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION=${{ needs.release.outputs.version }}
+          sed -i "s/streamlit-aggrid-v2>=.*/streamlit-aggrid-v2>=${VERSION}/" examples/requirements.txt
+          git add examples/requirements.txt
+          git commit -m "chore: bump demo app requirement to v${VERSION}"
+          git push

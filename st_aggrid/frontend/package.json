@@ -1,0 +1,42 @@
+{
+  "name": "st-aggrid-frontend",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run clean && npm run typecheck && npm run build:frontend:production",
+    "build:frontend:production": "cross-env NODE_ENV=production vite build",
+    "clean": "rimraf build",
+    "dev": "cross-env NODE_ENV=development vite build --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ],
+  "dependencies": {
+    "@fontsource/source-sans-pro": "^5.2.5",
+    "@streamlit/component-v2-lib": "^0.2.0",
+    "ag-charts-enterprise": "^12.3.1",
+    "ag-grid-community": "^34.3.1",
+    "ag-grid-enterprise": "34.3.1",
+    "ag-grid-react": "34.3.1",
+    "date-fns": "^4.1.0",
+    "lodash": "^4.17.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.20",
+    "@types/node": "^22.14.1",
+    "@types/react": "^18.3.26",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^5.1.0",
+    "cross-env": "^10.1.0",
+    "rimraf": "^6.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.1.12"
+  }
+}

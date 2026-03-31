@@ -1,0 +1,11 @@
+{
+  "name": "streamlit-aggrid-v2",
+  "version": "0.1.0",
+  "repository": "https://github.com/lperezmo/st-aggrid.git",
+  "license": "MIT",
+  "author": "Luis Perez",
+  "private": true,
+  "scripts": {
+    "build": "cd st_aggrid/frontend && npm run build"
+  }
+}
