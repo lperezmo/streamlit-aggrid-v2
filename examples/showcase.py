@@ -9,7 +9,7 @@ import streamlit as st
 
 # -- Page config (must be first Streamlit call) ------------------------------
 st.set_page_config(
-    page_title="st-aggrid | AG Grid for Streamlit",
+    page_title="streamlit-aggrid-v2 | AG Grid for Streamlit",
     page_icon=":material/table_chart:",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -55,14 +55,14 @@ _HEADER_GRADIENT = (
     else "linear-gradient(135deg, #2563eb, #1d4ed8)"
 )
 st.html(f"""
-<div style="text-align:center; padding:1.5rem 0 0.5rem;">
-    <h1 style="
-        margin:0; font-size:2.5rem; font-weight:800;
+<div style="text-align:center; padding:0.75rem 0 0.25rem;">
+    <h2 style="
+        margin:0; font-size:1.5rem; font-weight:700;
         background:{_HEADER_GRADIENT};
         -webkit-background-clip:text; -webkit-text-fill-color:transparent;
         background-clip:text;
-    ">st-aggrid</h1>
-    <p style="margin:0.4rem 0 0; font-size:1rem; opacity:0.7;">
+    ">streamlit-aggrid-v2</h2>
+    <p style="margin:0.3rem 0 0; font-size:0.85rem; opacity:0.7;">
         AG Grid for Streamlit, powered by Components v2
     </p>
 </div>
@@ -88,7 +88,7 @@ page.run()
 # -- Footer ------------------------------------------------------------------
 st.divider()
 st.caption(
-    "Built with [streamlit-aggrid-v2](https://github.com/lperezmo/st-aggrid) v0.1.0 · "
+    "Built with [streamlit-aggrid-v2](https://github.com/lperezmo/st-aggrid) · "
     "AG Grid v34.3.1 · "
     "Streamlit Custom Components v2"
 )
