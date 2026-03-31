@@ -45,25 +45,25 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["st_aggrid"]
+packages = ["src/st_aggrid"]
 artifacts = [
-    "st_aggrid/frontend/build/**/*",
-    "st_aggrid/json/**/*.json",
-    "st_aggrid/pyproject.toml",
+    "src/st_aggrid/frontend/build/**/*",
+    "src/st_aggrid/json/**/*.json",
+    "src/st_aggrid/pyproject.toml",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "st_aggrid/**/*.py",
-    "st_aggrid/frontend/build/**/*",
-    "st_aggrid/json/**/*.json",
-    "st_aggrid/pyproject.toml",
+    "src/st_aggrid/**/*.py",
+    "src/st_aggrid/frontend/build/**/*",
+    "src/st_aggrid/json/**/*.json",
+    "src/st_aggrid/pyproject.toml",
 ]
 
 [tool.semantic_release]
 version_toml = [
     "pyproject.toml:project.version",
-    "st_aggrid/pyproject.toml:project.version",
+    "src/st_aggrid/pyproject.toml:project.version",
 ]
 tag_format = "v{version}"
 commit_message = "chore(release): v{version}"

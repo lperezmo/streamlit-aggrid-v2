@@ -185,7 +185,7 @@ coverage/
 # Lockfiles
 #yarn.lock
 package-lock.json
-!st_aggrid/frontend/package-lock.json
+!src/st_aggrid/frontend/package-lock.json
 
 ########################################################################
 # JetBrains
@@ -197,8 +197,8 @@ package-lock.json
 ########################################################################
 .vscode/
 
-st_aggrid/frontend/node_modules/
-st_aggrid/frontend/.eslintcache
+src/st_aggrid/frontend/node_modules/
+src/st_aggrid/frontend/.eslintcache
 streamlit_aggrid.egg-info/*
 streamlit_aggrid.egg-info/PKG-INFO
 Pipfile.lock
@@ -221,7 +221,7 @@ Pipfile
 !.yarn/sdks
 !.yarn/versions
 .editorconfig
-st_aggrid/frontend/.yarn/install-state.gz
+src/st_aggrid/frontend/.yarn/install-state.gz
 quick_examples*
 test/_*
 streamlit-aggrid-examples/*
@@ -230,5 +230,5 @@ test/screenshots
 output.txt
 test/issues/*
 test/src_original/*
-st_aggrid/frontend/bundle-analysis.json
+src/st_aggrid/frontend/bundle-analysis.json
 stats.json
