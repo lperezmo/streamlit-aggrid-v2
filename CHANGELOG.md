@@ -1,7 +1,27 @@
 # CHANGELOG
 
 
-## v0.1.0 (2026-03-31)
+## v0.1.2 (2026-03-31)
+
+### Bug Fixes
+
+- Commit frontend build artifacts for Streamlit Cloud
+  ([`0db98c8`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/0db98c8facb6a476808ff8e3e7ececf4faea3f0c))
+
+Streamlit Cloud clones the repo and Python imports st_aggrid from the local directory (not the pip
+  wheel), so build/ must be present in the repo. CI still builds fresh artifacts for the PyPI wheel.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+### Chores
+
+- Bump demo requirement to v0.1.1
+  ([`5ede648`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/5ede6481b88e172909bd74fcb6bf9960339f39fa))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+## v0.1.1 (2026-03-30)
 
 ### Bug Fixes
 
@@ -21,12 +41,23 @@ python -m build creates sdist first then builds wheel from it, which strips giti
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
+- Bump to v0.1.1 — rebuild with frontend assets included
+  ([`63f98f3`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/63f98f32703c992ea30108ac74dd6c2990901d36))
+
+v0.1.0 on PyPI was published without frontend build artifacts. This release includes the complete
+  wheel with AG Grid frontend.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
 ### Chores
 
 - Trigger release pipeline
   ([`f901578`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/f901578a46bc9b9b34fa50149e5f1763a0a8d18c))
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+## v0.1.0 (2026-03-30)
 
 ### Features
 
