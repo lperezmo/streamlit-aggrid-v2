@@ -42,7 +42,7 @@ streamlit run your_app.py
 
 ## Why v2?
 
-The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggrid) hasn't been updated since 2023 and is built on Streamlit's legacy iframe-based component model. This rewrite modernizes the architecture while keeping the same Python API.
+The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggrid) is built on Streamlit's legacy iframe-based component model (CCv1). Migrating to CCv2 is a significant architectural change — this rewrite does that while keeping the same Python API.
 
 | | **streamlit-aggrid** (original) | **streamlit-aggrid-v2** |
 |---|---|---|
