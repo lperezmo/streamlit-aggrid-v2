@@ -8,7 +8,7 @@
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://st-aggrid.streamlit.app/)
 
-AG Grid component for Streamlit — interactive tables, editing, filtering, sorting, grouping & more.
+AG Grid component for Streamlit - interactive tables, editing, filtering, sorting, grouping & more.
 
 Built on [AG Grid](https://www.ag-grid.com/) v34.3.1 with [Streamlit Custom Components v2](https://docs.streamlit.io/develop/concepts/custom-components).
 
@@ -22,7 +22,7 @@ This project is a continuation of [streamlit-aggrid](https://github.com/PablocFo
 pip install streamlit-aggrid-v2
 ```
 
-> **Note:** The Python import stays `st_aggrid` — only the `pip install` name changed.
+> **Note:** The Python import stays `st_aggrid` - only the `pip install` name changed.
 
 ## Quick Start
 
@@ -42,11 +42,11 @@ streamlit run your_app.py
 
 ## Why v2?
 
-The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggrid) is built on Streamlit's legacy iframe-based component model (CCv1). Migrating to CCv2 is a significant architectural change — this rewrite does that while keeping the same Python API.
+The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggrid) is built on Streamlit's legacy iframe-based component model (CCv1). Migrating to CCv2 is a significant architectural change - this rewrite does that while keeping the same Python API.
 
 | | **streamlit-aggrid** (original) | **streamlit-aggrid-v2** |
 |---|---|---|
-| **Component model** | CCv1 — iframe + postMessage | CCv2 — direct DOM rendering |
+| **Component model** | CCv1 - iframe + postMessage | CCv2 - direct DOM rendering |
 | **AG Grid version** | v31 | v34.3.1 |
 | **Themes** | 3 themes, no dark mode for quartz | 4 themes, automatic dark/light detection |
 | **Build toolchain** | webpack / CRA | Vite + ESM |
@@ -59,25 +59,25 @@ The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggri
 | **Path handling** | Wrong variable, missing method | Corrected |
 | **Custom themes** | Not supported | `StAggridTheme` with color schemes, icon sets, params |
 | **Maintenance** | Inactive since 2023 | Active, semantic versioning, CI/CD |
-| **Python API** | `from st_aggrid import AgGrid` | Same — fully backward compatible |
+| **Python API** | `from st_aggrid import AgGrid` | Same - fully backward compatible |
 
 **Migration:** Change `pip install streamlit-aggrid` to `pip install streamlit-aggrid-v2`. No code changes needed.
 
 ## Features
 
-- **No iframes** — AG Grid renders directly in the Streamlit DOM via CCv2, eliminating postMessage overhead.
-- **Theming** — All four AG Grid themes (quartz, alpine, balham, material) with automatic dark/light mode detection. Custom themes via `StAggridTheme` with color schemes, icon sets, and param overrides.
-- **Editing** — Cell editing with `singleClickEdit`, value parsers, and change detection.
-- **Row selection** — Single, multiple, and checkbox selection with pre-selected rows.
-- **Filtering & sorting** — Column filters, floating filters, quick search, and multi-column sort.
-- **Column configuration** — Pinning, resizing, reordering, auto-sizing, and column groups via `GridOptionsBuilder`.
-- **Cell renderers** — Custom cell rendering with `JsCode` (stars, badges, progress bars, buttons).
-- **Row styling** — Conditional row/cell styling via `getRowStyle`, `rowClassRules`, and `cellStyle`.
-- **Enterprise features** — Row grouping, pivot mode, status bar, side bar, Excel export, cell selection, sparklines (requires AG Grid license).
-- **Data return modes** — `AS_INPUT`, `FILTERED`, `FILTERED_AND_SORTED`, `MINIMAL`, and `CUSTOM` via the collector pattern.
-- **Modern build** — Vite + ESM replaces the legacy webpack/CRA toolchain.
-- **Bug fixes** — 25 bugs fixed from the original codebase.
-- **Backward compatible** — Existing `AgGrid()`, `GridOptionsBuilder`, `JsCode` code works with just a `pip install` change.
+- **No iframes** - AG Grid renders directly in the Streamlit DOM via CCv2, eliminating postMessage overhead.
+- **Theming** - All four AG Grid themes (quartz, alpine, balham, material) with automatic dark/light mode detection. Custom themes via `StAggridTheme` with color schemes, icon sets, and param overrides.
+- **Editing** - Cell editing with `singleClickEdit`, value parsers, and change detection.
+- **Row selection** - Single, multiple, and checkbox selection with pre-selected rows.
+- **Filtering & sorting** - Column filters, floating filters, quick search, and multi-column sort.
+- **Column configuration** - Pinning, resizing, reordering, auto-sizing, and column groups via `GridOptionsBuilder`.
+- **Cell renderers** - Custom cell rendering with `JsCode` (stars, badges, progress bars, buttons).
+- **Row styling** - Conditional row/cell styling via `getRowStyle`, `rowClassRules`, and `cellStyle`.
+- **Enterprise features** - Row grouping, pivot mode, status bar, side bar, Excel export, cell selection, sparklines (requires AG Grid license).
+- **Data return modes** - `AS_INPUT`, `FILTERED`, `FILTERED_AND_SORTED`, `MINIMAL`, and `CUSTOM` via the collector pattern.
+- **Modern build** - Vite + ESM replaces the legacy webpack/CRA toolchain.
+- **Bug fixes** - 25 bugs fixed from the original codebase.
+- **Backward compatible** - Existing `AgGrid()`, `GridOptionsBuilder`, `JsCode` code works with just a `pip install` change.
 
 ## API Overview
 
