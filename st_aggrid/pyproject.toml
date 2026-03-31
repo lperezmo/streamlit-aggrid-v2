@@ -1,7 +1,7 @@
 # Component metadata picked up by Streamlit at runtime.
 [project]
 name = "st-aggrid"
-version = "0.1.0"
+version = "0.1.1"
 
 [[tool.streamlit.component.components]]
 name = "st_aggrid"
