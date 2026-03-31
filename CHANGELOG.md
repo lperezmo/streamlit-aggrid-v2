@@ -3,6 +3,23 @@
 
 ## v0.1.0 (2026-03-31)
 
+### Bug Fixes
+
+- Add frontend package-lock.json for CI builds
+  ([`3820ef1`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/3820ef151202f553d53fa824121a7e8d46f755d8))
+
+- Un-ignore st_aggrid/frontend/package-lock.json so npm ci works in CI - Fix bump-demo job failing
+  when requirements.txt is already up to date
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+### Chores
+
+- Trigger release pipeline
+  ([`f901578`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/f901578a46bc9b9b34fa50149e5f1763a0a8d18c))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
 ### Features
 
 - Initial release of streamlit-aggrid-v2
