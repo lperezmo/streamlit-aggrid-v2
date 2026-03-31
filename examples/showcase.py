@@ -82,7 +82,7 @@ with st.sidebar:
     )
 
 # -- Page title + run --------------------------------------------------------
-st.title(f"{page.title}")
+st.subheader(page.title)
 page.run()
 
 # -- Footer ------------------------------------------------------------------
