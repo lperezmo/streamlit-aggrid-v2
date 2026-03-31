@@ -42,7 +42,7 @@ def _get_component_func():
         if not _RELEASE:
             warnings.warn("WARNING: ST_AGGRID is in development mode.")
         _component_func = st.components.v2.component(
-            "st-aggrid.st_aggrid",
+            "streamlit-aggrid-v2.st_aggrid",
             html='<div id="root"></div>',
             js="index-*.js",
             css="index-*.css",
