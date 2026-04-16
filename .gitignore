@@ -9,6 +9,9 @@ __pycache__/
 # C extensions
 *.so
 
+# streamlit secrets
+.streamlit/secrets.toml
+
 # claude
 .claude/
 CLAUDE.md
