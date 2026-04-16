@@ -24,24 +24,71 @@ st.markdown(
 page = st.navigation(
     {
         "": [
-            st.Page("app_pages/basic_grid.py", title="Basic grid", icon=":material/table_chart:"),
-            st.Page("app_pages/editing.py", title="Cell editing", icon=":material/edit:"),
-            st.Page("app_pages/selection.py", title="Row selection", icon=":material/check_box:"),
+            st.Page(
+                "app_pages/basic_grid.py",
+                title="Basic grid",
+                icon=":material/table_chart:",
+            ),
+            st.Page(
+                "app_pages/editing.py", title="Cell editing", icon=":material/edit:"
+            ),
+            st.Page(
+                "app_pages/selection.py",
+                title="Row selection",
+                icon=":material/check_box:",
+            ),
         ],
         "Data": [
-            st.Page("app_pages/filtering_sorting.py", title="Filtering & sorting", icon=":material/filter_list:"),
-            st.Page("app_pages/floating_filters.py", title="Floating filters", icon=":material/search:"),
-            st.Page("app_pages/data_return.py", title="Data return modes", icon=":material/output:"),
+            st.Page(
+                "app_pages/filtering_sorting.py",
+                title="Filtering & sorting",
+                icon=":material/filter_list:",
+            ),
+            st.Page(
+                "app_pages/floating_filters.py",
+                title="Floating filters",
+                icon=":material/search:",
+            ),
+            st.Page(
+                "app_pages/data_return.py",
+                title="Data return modes",
+                icon=":material/output:",
+            ),
         ],
         "Appearance": [
             st.Page("app_pages/themes.py", title="Themes", icon=":material/palette:"),
-            st.Page("app_pages/custom_columns.py", title="Column config", icon=":material/view_column:"),
-            st.Page("app_pages/cell_renderers.py", title="Cell renderers", icon=":material/widgets:"),
-            st.Page("app_pages/row_styling.py", title="Row styling", icon=":material/format_paint:"),
-            st.Page("app_pages/inline_buttons.py", title="Inline buttons", icon=":material/smart_button:"),
+            st.Page(
+                "app_pages/custom_columns.py",
+                title="Column config",
+                icon=":material/view_column:",
+            ),
+            st.Page(
+                "app_pages/cell_renderers.py",
+                title="Cell renderers",
+                icon=":material/widgets:",
+            ),
+            st.Page(
+                "app_pages/row_styling.py",
+                title="Row styling",
+                icon=":material/format_paint:",
+            ),
+            st.Page(
+                "app_pages/inline_buttons.py",
+                title="Inline buttons",
+                icon=":material/smart_button:",
+            ),
         ],
         "Enterprise": [
-            st.Page("app_pages/enterprise.py", title="Enterprise features", icon=":material/star:"),
+            st.Page(
+                "app_pages/enterprise.py",
+                title="Enterprise features",
+                icon=":material/star:",
+            ),
+            st.Page(
+                "app_pages/tree_data.py",
+                title="Tree data + buttons",
+                icon=":material/account_tree:",
+            ),
         ],
     },
     position="top",

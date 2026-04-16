@@ -65,7 +65,7 @@ The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggri
 ## Features
 
 - **No iframes** - AG Grid renders directly in the Streamlit DOM via CCv2, eliminating postMessage overhead.
-- **Theming** - All four AG Grid themes (quartz, alpine, balham, material) with automatic dark/light mode detection. Custom themes via `StAggridTheme` with color schemes, icon sets, and param overrides.
+- **Theming** - All four AG Grid themes (quartz, alpine, balham, material) with automatic dark/light mode detection and automatic font matching to Streamlit's theme (`--st-font`). Custom themes via `StAggridTheme` with color schemes, icon sets, and param overrides.
 - **Editing** - Cell editing with `singleClickEdit`, value parsers, and change detection.
 - **Row selection** - Single, multiple, and checkbox selection with pre-selected rows.
 - **Filtering & sorting** - Column filters, floating filters, quick search, and multi-column sort.
@@ -109,9 +109,13 @@ filtered_data = response.data
 
 ## Live Demo
 
-Check out the full showcase with 12 interactive examples:
+Check out the full showcase with 13 interactive examples:
 
 **[st-aggrid.streamlit.app](https://st-aggrid.streamlit.app/)**
+
+## AI copilot skill
+
+A ready-to-use Claude Code / Claude Agent SDK skill lives at [`skills/streamlit-aggrid-v2/SKILL.md`](skills/streamlit-aggrid-v2/SKILL.md). Copy that folder into your project's `.claude/skills/` (or the equivalent for your AI tool) and your copilot will know how to build grids with `GridOptionsBuilder`, wire up `JsCode` renderers, pick the right `DataReturnMode`, theme the grid, build tree-data views, and avoid common gotchas — without re-reading the whole repo every conversation.
 
 ## License
 
