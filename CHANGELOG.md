@@ -1,6 +1,111 @@
 # CHANGELOG
 
 
+## v0.1.5 (2026-04-16)
+
+### Bug Fixes
+
+- Match Streamlit font across all themes and fix material dark header
+  ([`c8419cc`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/c8419ccee07c4bda8edb1ea558cc9a15b7da10e0))
+
+Extract a streamlitFontFamily helper reading --st-font from the CCv2 host, and apply it via
+  .withParams({fontFamily}) in the quartz/alpine/balham/ material recipes (previously only the
+  streamlit recipe matched the font).
+
+Also override headerTextColor with streamlitTheme.textColor in material dark mode; AG Grid's
+  material theme hardcodes the header text to near-black and colorSchemeDark doesn't flip it, making
+  headers unreadable on Streamlit's dark background.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+- Sanitize NaN/Infinity in gridOptions before CCv2 transport
+  ([`0e76365`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/0e763651233816bf5e6ea7107088b4ce0cbef3a9))
+
+Streamlit CCv2 serializes component data with strict JSON, which rejects NaN and Infinity tokens.
+  User pipelines that compute numeric gridOptions fields (e.g. column widths via
+  df[col].astype(str).str.len().max() on an empty column) can resolve to NaN and blow up JSON.parse
+  on the frontend with "SyntaxError: Unexpected token 'N'".
+
+Walk grid_options at the end of _parse_data_and_grid_options and replace any non-finite float with
+  None. Row data is unaffected (pd.to_json already converts NaN to null).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+### Chores
+
+- Add comparison table to README (v1 vs v2)
+  ([`1919c21`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/1919c21a234a40b9907ea6d017ca5f45f2f2f3b1))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Bump demo app requirement to v0.1.4
+  ([`aace8c4`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/aace8c46553727e69bfcfb3d8047437523bbcd00))
+
+- Fix deprecation warnings and SettingWithCopyWarning
+  ([`cb7edf5`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/cb7edf5b5cc1ec2f881acd07d6c7415b7b143fa6))
+
+Replace use_container_width with width="stretch" in example pages (enterprise.py, inline_buttons.py)
+  and copy DataFrame before mutation in aggrid_utils.py to avoid pandas SettingWithCopyWarning.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Fix inaccurate claim about original project activity
+  ([`24c6de0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/24c6de0f2b28d1106632332470765c27757efb9a))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Ignore .streamlit/secrets.toml
+  ([`0ff454f`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/0ff454fda343747062c6e9293d56711ef731d5ce))
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+- Increase header top padding to prevent cutoff
+  ([`ccf3ed8`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/ccf3ed81d26ceedeee8fe7363854c9e7f69f9883))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Remove all em dashes from README
+  ([`b5b12c7`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/b5b12c77a36a8165f3e9a0cdc200d2ae47ed47de))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Remove downloads badge from README
+  ([`53ba913`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/53ba913712c4d0d3dff3ff8ec0cf81344388b64b))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Shrink showcase header, use repo name, drop version from footer
+  ([`26ac55a`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/26ac55a8b2cc749f9a6547ea8f6dd70a99a09481))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Update README with badges, features, and API overview
+  ([`b36dffb`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/b36dffb712cabfebad2291e18d1d9a75fd0a0ae9))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+- Use subheader for individual page titles
+  ([`3c5eb52`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/3c5eb5260e1ada2ce836edb89f60ea7ff1ab80fb))
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+### Documentation
+
+- Add tree-data example, AI copilot skill, and README updates
+  ([`bdba3b6`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/bdba3b69b5c842a71cef1fe07703d3cd05b204a4))
+
+- examples/app_pages/tree_data.py: new Enterprise-group page showing treeData + getDataPath + three
+  mutually-exclusive action button cell renderers (Delete / Audit / Approve) with conditional row
+  styling. - examples/showcase.py: register the tree-data page in the Enterprise nav group. -
+  skills/streamlit-aggrid-v2/SKILL.md: self-contained Claude Code / Claude Agent SDK skill for AI
+  copilots. Users can copy the folder into their project's .claude/skills/ so their copilot knows
+  how to use GridOptionsBuilder, JsCode, data return modes, theming, tree data, and common gotchas
+  without re-reading the whole repo. - README.md: bump showcase example count to 13 and add an "AI
+  copilot skill" section pointing to the skill.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+
 ## v0.1.4 (2026-03-31)
 
 ### Bug Fixes
