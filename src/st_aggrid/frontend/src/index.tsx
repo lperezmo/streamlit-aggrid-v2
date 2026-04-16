@@ -37,6 +37,9 @@ export type AgGridDataShape = {
   update_on: any[]
   use_json_serialization: boolean | string
   server_sync_strategy: string
+  ai_toolkit: boolean
+  ai_state_update: any | null
+  ai_response: { status: string; explanation: string; prompt: string } | null
 }
 
 // Track React roots per component instance

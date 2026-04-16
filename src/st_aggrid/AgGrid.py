@@ -88,6 +88,9 @@ def AgGrid(
     should_grid_return: JsCode = None,
     use_json_serialization: bool | Literal["auto"] = "auto",
     server_sync_strategy: Literal["client_wins", "server_wins"] = "client_wins",
+    ai_toolkit: bool = False,
+    ai_state_update: dict = None,
+    ai_response: dict = None,
     **default_column_parameters,
 ) -> AgGridReturn:
     """Renders a DataFrame using AgGrid.
@@ -545,6 +548,9 @@ def AgGrid(
         update_on=update_on,
         use_json_serialization=use_json_serialization,
         server_sync_strategy=server_sync_strategy,
+        ai_toolkit=ai_toolkit,
+        ai_state_update=ai_state_update,
+        ai_response=ai_response,
     )
 
     try:

@@ -29,6 +29,7 @@ import "@fontsource/source-sans-pro"
 import "./AgGrid.css"
 
 import GridToolBar from "./components/GridToolBar"
+import AiToolkitBar from "./components/AiToolkitBar"
 
 import {
   addCustomCSS,
@@ -55,6 +56,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
   private shouldGridReturn: Function | undefined = undefined
   private collectGridReturn: Function | undefined = undefined
   private eventCleanupFns: Array<() => void> = []
+  private aiToolkitSchema: any = null
 
   constructor(props: AgGridProps) {
     super(props)
@@ -220,6 +222,11 @@ class AgGrid extends React.Component<AgGridProps, State> {
       const result = await collector.processResponse(context)
 
       if (result.success) {
+        // Inject AI Toolkit schema if enabled
+        if (this.props.componentData.ai_toolkit && this.aiToolkitSchema && result.data) {
+          result.data.structuredSchema = this.aiToolkitSchema
+        }
+
         if (this.state.debug) {
           console.log(
             `Grid response processed by ${collector.getCollectorType()}:`,
@@ -305,6 +312,23 @@ class AgGrid extends React.Component<AgGridProps, State> {
       this.gridApiRef?.updateGridOptions({ rowData })
     }
 
+    // AI Toolkit: apply state update from Python
+    if (this.props.componentData.ai_toolkit && this.gridApiRef) {
+      const prevAiUpdate = prevProps.componentData?.ai_state_update
+      const currAiUpdate = this.props.componentData.ai_state_update
+      if (currAiUpdate && !isEqual(prevAiUpdate, currAiUpdate)) {
+        try {
+          const { gridState, propertiesToIgnore } = currAiUpdate
+          if (this.state.debug) {
+            console.log("AI Toolkit: applying state update", gridState, "ignoring", propertiesToIgnore)
+          }
+          ;(this.gridApiRef as any).setState(gridState, propertiesToIgnore)
+        } catch (e) {
+          console.error("AI Toolkit: setState() failed", e)
+        }
+      }
+    }
+
     //check if columnStates changed
     if (!isEqual(prevProps.componentData?.columns_state, this.props.componentData.columns_state)) {
       const columnsState = this.props.componentData.columns_state
@@ -344,6 +368,20 @@ class AgGrid extends React.Component<AgGridProps, State> {
       })
     }
 
+    // AI Toolkit: generate schema and trigger initial return
+    if (this.props.componentData.ai_toolkit && this.gridApiRef) {
+      try {
+        this.aiToolkitSchema = (this.gridApiRef as any).getStructuredSchema()
+        if (this.state.debug) {
+          console.log("AI Toolkit: schema generated", this.aiToolkitSchema)
+        }
+        // Trigger initial return so Python gets the schema immediately
+        this.returnGridValue({}, "gridReady")
+      } catch (e) {
+        console.warn("AI Toolkit: getStructuredSchema() not available", e)
+      }
+    }
+
     //If there is any event onGridReady in gridOptions, fire it
     let { onGridReady } = this.state.gridOptions
     onGridReady && onGridReady(event)
@@ -368,15 +406,51 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
   }
 
+  private handleAiSubmit = (query: string) => {
+    // Send query to Python via state - Python will handle the LLM call
+    this.props.setStateValue("grid_return", {
+      ...(this.state.api ? {
+        gridState: this.state.api.getState(),
+        columnsState: this.state.api.getColumnState(),
+      } : {}),
+      aiQuery: query,
+      structuredSchema: this.aiToolkitSchema,
+    })
+  }
+
+  private handleAiReset = () => {
+    if (this.gridApiRef) {
+      ;(this.gridApiRef as any).setState({
+        columnVisibility: { hiddenColIds: [] },
+        columnPinning: { leftColIds: [], rightColIds: [] },
+        sort: { sortModel: [] },
+        filter: { filterModel: {} },
+        rowGroup: { groupColIds: [] },
+      })
+      // Trigger a return to update Python side
+      this.returnGridValue({}, "aiReset")
+    }
+  }
+
   public render = (): ReactNode => {
     let manualUpdate = this.props.componentData.manual_update === true
 
+    const aiResponse = this.props.componentData.ai_response
     return (
       <div
         id="gridContainer"
         ref={this.gridContainerRef}
         style={this.defineContainerHeight()}
       >
+        {this.props.componentData.ai_toolkit && (
+          <AiToolkitBar
+            onSubmit={this.handleAiSubmit}
+            onReset={this.handleAiReset}
+            status={aiResponse?.status || null}
+            explanation={aiResponse?.explanation || ""}
+            prompt={aiResponse?.prompt || ""}
+          />
+        )}
         <GridToolBar
           showManualUpdateButton={manualUpdate}
           enabled={this.props.componentData.show_toolbar ?? true}

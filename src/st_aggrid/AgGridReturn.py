@@ -84,6 +84,18 @@ class AgGridReturn(Mapping):
         return self.grid_response.get("gridState")
 
     @property
+    def structured_schema(self):
+        """AI Toolkit structured schema for LLM integration.
+        Only available when ai_toolkit=True is passed to AgGrid()."""
+        return self.grid_response.get("structuredSchema")
+
+    @property
+    def ai_query(self):
+        """User query from the embedded AI Toolkit input bar.
+        Only available when ai_toolkit=True is passed to AgGrid()."""
+        return self.grid_response.get("aiQuery")
+
+    @property
     def selected_rows_id(self):
         """Ids of selected rows"""
         grid_state = self.grid_state

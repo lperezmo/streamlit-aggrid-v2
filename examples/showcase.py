@@ -43,6 +43,9 @@ page = st.navigation(
         "Enterprise": [
             st.Page("app_pages/enterprise.py", title="Enterprise features", icon=":material/star:"),
         ],
+        "AI": [
+            st.Page("app_pages/ai_toolkit.py", title="AI Toolkit", icon=":material/smart_toy:"),
+        ],
     },
     position="top",
 )
