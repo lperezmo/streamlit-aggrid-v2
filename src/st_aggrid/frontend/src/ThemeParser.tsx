@@ -88,15 +88,18 @@ class ThemeParser {
         iconSetQuartzRegular: iconSetQuartzRegular
     }
 
+    private streamlitFontFamily(streamlitTheme: StreamlitThemeFromCSS) {
+        const font = streamlitTheme.font?.split(",").at(0)?.trim() || "Source Sans Pro"
+        return [font, {googleFont: font}]
+    }
+
     streamlitRecipe(el?: Element | ShadowRoot | null): Theme{
         const streamlitTheme = getStreamlitThemeFromCSS(el)
         let theme : Theme = this.baseMapper['balham']
-        const font = streamlitTheme.font?.split(",").at(0)?.trim() || "Source Sans Pro"
-        const fontFamily = [font, {googleFont: font}]
 
         theme = theme.withParams({
             accentColor: streamlitTheme.primaryColor,
-            fontFamily: fontFamily,
+            fontFamily: this.streamlitFontFamily(streamlitTheme),
             foregroundColor: streamlitTheme.textColor,
             backgroundColor: streamlitTheme.backgroundColor
         }).withPart(iconSetQuartzLight)
@@ -109,31 +112,37 @@ class ThemeParser {
     }
 
     quartzRecipe(el?: Element | ShadowRoot | null) {
-        const { base } = getStreamlitThemeFromCSS(el)
-        let theme: Theme = themeQuartz
-        if (base === 'dark') theme = theme.withPart(colorSchemeDark)
+        const streamlitTheme = getStreamlitThemeFromCSS(el)
+        let theme: Theme = themeQuartz.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
+        if (streamlitTheme.base === 'dark') theme = theme.withPart(colorSchemeDark)
         return theme
     }
 
     alpineRecipe(el?: Element | ShadowRoot | null) {
-        const { base } = getStreamlitThemeFromCSS(el)
-        let theme: Theme = themeAlpine
-        if (base === 'dark') theme = theme.withPart(colorSchemeDark)
+        const streamlitTheme = getStreamlitThemeFromCSS(el)
+        let theme: Theme = themeAlpine.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
+        if (streamlitTheme.base === 'dark') theme = theme.withPart(colorSchemeDark)
         return theme
     }
 
     balhamRecipe(el?: Element | ShadowRoot | null) {
-        const { base } = getStreamlitThemeFromCSS(el)
-        let theme: Theme = themeBalham
-        if (base === 'dark') theme = theme.withPart(colorSchemeDark)
+        const streamlitTheme = getStreamlitThemeFromCSS(el)
+        let theme: Theme = themeBalham.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
+        if (streamlitTheme.base === 'dark') theme = theme.withPart(colorSchemeDark)
         return theme
     }
 
     materialRecipe(el?: Element | ShadowRoot | null) {
-        const { base } = getStreamlitThemeFromCSS(el)
-        let theme: Theme = themeMaterial
-        if (base === 'dark') theme = theme.withPart(colorSchemeDark)
-        return theme
+        const streamlitTheme = getStreamlitThemeFromCSS(el)
+        if (streamlitTheme.base === 'dark') {
+            return themeMaterial
+                .withParams({
+                    fontFamily: this.streamlitFontFamily(streamlitTheme),
+                    headerTextColor: streamlitTheme.textColor,
+                })
+                .withPart(colorSchemeDark)
+        }
+        return themeMaterial.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
     }
 
     customRecipe(gridOptionsTheme: stAggridThemeOptions) : Theme {
