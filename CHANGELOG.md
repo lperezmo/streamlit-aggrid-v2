@@ -1,6 +1,61 @@
 # CHANGELOG
 
 
+## v0.2.0 (2026-05-13)
+
+### Chores
+
+- Add e2e tests for the CCv2 AgGrid component
+  ([`72b3b89`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/72b3b8974eb1e854b4c90c6156997a0a14563ffa))
+
+Adds the first end-to-end test suite for the v2 component (Playwright + pytest, real Streamlit
+  server, real Chromium, exercises the full Python -> component -> DOM stack).
+
+- test/test_ccv2_e2e.py covers component attachment (no iframe), init from DataFrame / JSON /
+  gridOptions-only / empty, Python<->frontend data roundtrip, and sort-by-header interaction. -
+  test/ccv2_e2e_app.py is the Streamlit fixture app the tests load. - test/conftest.py
+  force-installs a freshly built wheel before each session because Streamlit's CCv2 manifest scanner
+  cannot locate src/st_aggrid/pyproject.toml through an editable install (dist name
+  streamlit-aggrid-v2 doesn't match importable package name st_aggrid, so _pyproject_via_import_spec
+  returns None). The legacy CCv1 iframe-pattern tests under test/test_grid_*.py are excluded via
+  collect_ignore until they're ported.
+
+- Add tests CI workflow
+  ([`85ee50d`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/85ee50def3cd4eadaedb99f07fd844f698a1e918))
+
+Runs the CCv2 e2e suite (test/test_ccv2_e2e.py) on every push to main and on PRs targeting main. The
+  workflow builds the frontend first because the test conftest builds the wheel via 'uv build' and
+  hatchling silently produces an empty wheel if src/st_aggrid/frontend/build/ is missing. Playwright
+  Chromium is installed with --with-deps so the runner has the system libs the browser needs.
+
+- Bump demo app requirement to v0.1.5
+  ([`714dea5`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/714dea5c028e76e7fc267831f8b749dbdd816df5))
+
+### Features
+
+- Upgrade AG Grid to v35.3.0
+  ([`d80eabf`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/d80eabfa565c59182ebbe479aaf7ebc24cca907b))
+
+Bumps the bundled AG Grid from v34.3.1 to v35.3.0 and AG Charts Enterprise from 12.3.1 to 13.3.0.
+  Per AG Grid's upgrade guide there are no API removals or deprecations in v35; cellDataType was
+  stripped from columnTypes and colId from autoGroupColumnDef (we reference neither). No Python API
+  changes.
+
+Highlights unlocked by the bump: - Formulas + Formula Editor (35.0 / 35.1) - allowFormula on
+  columnDef enables spreadsheet-style =SUM(...) cells with autocomplete and fill-handle. - Column
+  Selection (35.0) - cellSelection.columnSelection lets users click column headers to select whole
+  columns. - BigInt cell type, Named Date Ranges, Theme Builder Imports, Excel Data Protection
+  (35.1). - Compact Group Column, Aggregation Editing (35.2). - Quick Access Toolbar, Cell Notes,
+  Server-Side Grand Total Row (35.3).
+
+A new showcase page (Enterprise > What's new in v35) demonstrates Formulas and Column Selection with
+  runnable examples.
+
+README updates: - bumped AG Grid version mention to 35.3.0. - comparison table corrected: original
+  streamlit-aggrid is on AG Grid v34 (not v31), and is still actively maintained on the CCv1 / v34
+  line rather than 'inactive since 2023'.
+
+
 ## v0.1.5 (2026-04-16)
 
 ### Bug Fixes
