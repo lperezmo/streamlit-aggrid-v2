@@ -89,6 +89,11 @@ page = st.navigation(
                 title="Tree data + buttons",
                 icon=":material/account_tree:",
             ),
+            st.Page(
+                "app_pages/whats_new_35.py",
+                title="What's new in v35",
+                icon=":material/auto_awesome:",
+            ),
         ],
     },
     position="top",
@@ -136,6 +141,6 @@ page.run()
 st.divider()
 st.caption(
     "Built with [streamlit-aggrid-v2](https://github.com/lperezmo/st-aggrid) · "
-    "AG Grid v34.3.1 · "
+    "AG Grid v35.3.0 · "
     "Streamlit Custom Components v2"
 )

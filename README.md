@@ -9,7 +9,7 @@
 
 AG Grid component for Streamlit - interactive tables, editing, filtering, sorting, grouping & more.
 
-Built on [AG Grid](https://www.ag-grid.com/) v34.3.1 with [Streamlit Custom Components v2](https://docs.streamlit.io/develop/concepts/custom-components).
+Built on [AG Grid](https://www.ag-grid.com/) v35.3.0 with [Streamlit Custom Components v2](https://docs.streamlit.io/develop/concepts/custom-components).
 
 ## Acknowledgments
 
@@ -46,7 +46,7 @@ The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggri
 | | **streamlit-aggrid** (original) | **streamlit-aggrid-v2** |
 |---|---|---|
 | **Component model** | CCv1 - iframe + postMessage | CCv2 - direct DOM rendering |
-| **AG Grid version** | v31 | v34.3.1 |
+| **AG Grid version** | v34 | v35.3.0 |
 | **Themes** | 3 themes, no dark mode for quartz | 4 themes, automatic dark/light detection |
 | **Build toolchain** | webpack / CRA | Vite + ESM |
 | **React** | React 17 | React 18 |
@@ -57,7 +57,7 @@ The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggri
 | **Mutable defaults** | `grid_response={}`, `update_on=[]` | Fixed with `None` + inline init |
 | **Path handling** | Wrong variable, missing method | Corrected |
 | **Custom themes** | Not supported | `StAggridTheme` with color schemes, icon sets, params |
-| **Maintenance** | Inactive since 2023 | Active, semantic versioning, CI/CD |
+| **Maintenance** | Active, but on the CCv1 / AG Grid 34 line | Active, semantic versioning, CI/CD |
 | **Python API** | `from st_aggrid import AgGrid` | Same - fully backward compatible |
 
 **Migration:** Change `pip install streamlit-aggrid` to `pip install streamlit-aggrid-v2`. No code changes needed.
@@ -113,7 +113,7 @@ Check out the full showcase with 13 interactive examples:
 
 **[st-aggrid.streamlit.app](https://st-aggrid.streamlit.app/)**
 
-## AI copilot skill
+## AI Skills
 
 A ready-to-use Claude Code / Claude Agent SDK skill lives at [`skills/streamlit-aggrid-v2/SKILL.md`](skills/streamlit-aggrid-v2/SKILL.md). Copy that folder into your project's `.claude/skills/` (or the equivalent for your AI tool) and your copilot will know how to build grids with `GridOptionsBuilder`, wire up `JsCode` renderers, pick the right `DataReturnMode`, theme the grid, build tree-data views, and avoid common gotchas — without re-reading the whole repo every conversation.
 
