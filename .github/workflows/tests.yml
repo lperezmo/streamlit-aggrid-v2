@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: CCv2 e2e (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      # Frontend build is required: the test conftest builds the wheel via
+      # `uv build`, and hatchling silently produces an empty wheel if
+      # src/st_aggrid/frontend/build/ doesn't exist.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: src/st_aggrid/frontend
+
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.13' }
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - run: uv sync --group dev
+
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: uv run pytest test/test_ccv2_e2e.py -v
+
+      - name: Upload Playwright test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
