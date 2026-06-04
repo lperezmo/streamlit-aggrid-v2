@@ -20,6 +20,7 @@ from st_aggrid.shared import (
 from st_aggrid.aggrid_utils import (
     parse_update_mode,
     _parse_data_and_grid_options,
+    _sanitize_nan_inf,
 )
 from st_aggrid.AgGridReturn import AgGridReturn
 
@@ -515,9 +516,12 @@ def AgGrid(
     data_hash = _compute_data_hash(data)
 
     # In CCv2, all data goes through JSON via the `data=` parameter.
-    # Convert DataFrame to records for JSON serialization.
+    # Convert DataFrame to records for JSON serialization. Missing values
+    # (NaN/NaT/Inf) must be sanitized to None here: Streamlit serializes the
+    # payload with NaN/Infinity tokens that the frontend JSON.parse rejects,
+    # which would otherwise prevent the grid from rendering at all.
     if data is not None and use_json_serialization is not True:
-        row_data = data.to_dict("records")
+        row_data = _sanitize_nan_inf(data.to_dict("records"))
     else:
         row_data = None
 
