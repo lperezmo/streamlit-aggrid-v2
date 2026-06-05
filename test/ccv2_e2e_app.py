@@ -82,3 +82,18 @@ st.html(
     <pre data-testid='roundtrip-data'>{result.data.to_string()}</pre>
     """
 )
+
+# 6) Missing values: a DataFrame with None in both a text and a numeric
+# column. pandas stores the missing numeric value as float NaN, which must be
+# sanitized to None before serialization. Without that, the payload reaches
+# the frontend with a bare `NaN` token and JSON.parse throws, so AG Grid never
+# mounts. Regression guard for streamlit/streamlit#15435.
+missing_values_df = pd.DataFrame(
+    [
+        {"text": "abc", "int": 0},
+        {"text": None, "int": None},
+        {"text": "def", "int": 35},
+        {"text": None, "int": None},
+    ]
+)
+AgGrid(missing_values_df, key="missing_values_grid")

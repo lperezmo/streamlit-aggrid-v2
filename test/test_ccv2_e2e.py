@@ -45,6 +45,7 @@ def test_ccv2_component_attached(page: Page):
         "grid_options_only",
         "empty_grid",
         "roundtrip_grid",
+        "missing_values_grid",
     ):
         expect(_grid(page, key)).to_be_attached()
     # Make sure no iframe was created (would indicate a regression to CCv1)
@@ -96,6 +97,24 @@ def test_grid_data_roundtrip(page: Page):
     expect(roundtrip).to_contain_text("alice")
     expect(roundtrip).to_contain_text("bob")
     expect(roundtrip).to_contain_text("charlie")
+
+
+def test_renders_with_missing_values(page: Page):
+    """A DataFrame with None/NaN cells must still render the grid.
+
+    Regression guard for streamlit/streamlit#15435: missing numeric values
+    are stored by pandas as float NaN, which previously serialized to a bare
+    `NaN` token that the frontend JSON.parse rejected, leaving the grid
+    unmounted. The grid must mount and show every row.
+    """
+    grid = _grid(page, "missing_values_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    expect(grid.locator(".ag-header-cell-text").nth(0)).to_have_text("text")
+    expect(grid.locator(".ag-header-cell-text").nth(1)).to_have_text("int")
+    expect(grid.locator(".ag-row")).to_have_count(4)
+    # The populated cells still carry their values.
+    expect(grid.locator(".ag-cell").filter(has_text="abc")).to_have_count(1)
+    expect(grid.locator(".ag-cell").filter(has_text="35")).to_have_count(1)
 
 
 def test_sort_by_header_click(page: Page):
