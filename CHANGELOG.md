@@ -1,6 +1,38 @@
 # CHANGELOG
 
 
+## v0.2.1 (2026-06-05)
+
+### Bug Fixes
+
+- Sanitize NaN/Inf in row data so grids with missing values render
+  ([`2b5ca1b`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/2b5ca1b0fcf24d8097ed426b0be53f49fe5a45bd))
+
+DataFrames containing missing values (None/NaN/NaT) failed to render at all. pandas stores a missing
+  numeric value as float NaN, and the default data path built row_data via data.to_dict("records"),
+  which keeps that NaN. Streamlit then serialized the component payload with a bare NaN token, which
+  the frontend JSON.parse rejects, so AG Grid never mounted and the user saw a SyntaxError instead
+  of a grid.
+
+The existing _sanitize_nan_inf helper was only applied to gridOptions, not to the row data. The
+  use_json_serialization="auto" fallback did not catch this either, because it only triggers on a
+  Python-side serialization exception and NaN floats do not raise one.
+
+Apply _sanitize_nan_inf to the records list so missing values become null in the payload. Add a CCv2
+  e2e regression test that renders a DataFrame with None in both a text and a numeric column and
+  asserts the grid mounts with all rows.
+
+Fixes the rendering failure reported in streamlit/streamlit#15435.
+
+### Chores
+
+- Bump demo app requirement to v0.2.0
+  ([`dd81ed1`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/dd81ed18cbdc0670f51c669f1a7e1243496b577f))
+
+- Replace broken static.streamlit.io badge with shields.io
+  ([`3171d4e`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/3171d4ed608de0fae7f111c2d97916d7f011f706))
+
+
 ## v0.2.0 (2026-05-13)
 
 ### Chores
