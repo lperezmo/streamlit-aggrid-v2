@@ -1,6 +1,56 @@
 # CHANGELOG
 
 
+## v0.2.2 (2026-06-05)
+
+### Bug Fixes
+
+- Bump bundled lodash to 4.18.1 to patch prototype pollution
+  ([`fb248cd`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/fb248cd46b624fa4fd80bbb28f86efd23649a5c7))
+
+lodash is bundled into the shipped component JS (used for debounce, isEqual, omit, isEmpty,
+  cloneDeep), so this is the one dependency advisory that actually reaches end users of the wheel.
+
+- 4.17.23 -> 4.18.1 - GHSA-f23m-r3pf-42rh: prototype pollution via array path bypass in _.unset and
+  _.omit (this code uses _.omit on internal grid options) - GHSA-r5fr-rjxr-66jc: code injection via
+  _.template (not imported here, but patched anyway since the full library is bundled)
+
+Frontend rebuilds and typechecks clean against vite 7.3.5; the CI publish job rebuilds the bundle on
+  release, so the published wheel picks up the patched library.
+
+### Chores
+
+- Bump demo app requirement to v0.2.1
+  ([`86b472e`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/86b472ef57e878e752dca4a5456ed229666d16db))
+
+- Patch build-time frontend deps (vite, postcss, brace-expansion)
+  ([`7f1849b`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/7f1849b4b59be3b6b1181c353d1999037f75d50f))
+
+Regenerate frontend package-lock.json to pull patched build tooling. These are dev/build-only and
+  are not bundled into the shipped component, so no runtime exposure for end users:
+
+- vite 7.3.1 -> 7.3.5 (dev-server arbitrary file read, server.fs.deny bypass, optimized-deps path
+  traversal; only affects `vite dev`, which this project never runs; the build uses `vite build`
+  library mode) - postcss 8.5.8 -> 8.5.15 (XSS via unescaped </style> in CSS stringify) -
+  brace-expansion 5.0.5 -> 5.0.6 (large numeric range DoS)
+
+- Refresh uv.lock transitive deps to patched versions
+  ([`8faf0e3`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/8faf0e3ae5b2003902a6fbbde05caf2db24f9e52))
+
+Dev/CI lockfile only. The published wheel pins none of these (it declares streamlit>=1.51,
+  pandas>=1.4.0, python-decouple), so end users resolve their own versions and are unaffected.
+  Surgical uv lock --upgrade-package for the flagged transitive/dev deps:
+
+- urllib3 2.6.3 -> 2.7.0 (decompression-bomb safeguard bypass; sensitive headers forwarded across
+  origins on proxied low-level redirects) - gitpython 3.1.46 -> 3.1.50 (command injection via
+  options bypass; newline-injection RCE via core.hooksPath; path traversal) - pillow 12.1.1 ->
+  12.2.0 (OOB write on PSD; FITS decompression bomb; integer/heap overflows; PDF trailer parse DoS)
+  - idna 3.11 -> 3.18 (idna.encode bypass of the CVE-2024-3651 fix) - pytest 9.0.2 -> 9.0.3
+  (vulnerable tmpdir handling)
+
+Also corrects the editable self-version pin to 0.2.1.
+
+
 ## v0.2.1 (2026-06-05)
 
 ### Bug Fixes
