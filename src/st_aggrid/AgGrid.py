@@ -13,6 +13,7 @@ except ImportError:
 from st_aggrid.shared import (
     GridUpdateMode,
     DataReturnMode,
+    ColumnsAutoSizeMode,
     JsCode,
     StAggridTheme,
     AgGridTheme,
@@ -89,6 +90,9 @@ def AgGrid(
     should_grid_return: JsCode = None,
     use_json_serialization: bool | Literal["auto"] = "auto",
     server_sync_strategy: Literal["client_wins", "server_wins"] = "client_wins",
+    columns_auto_size_mode: ColumnsAutoSizeMode
+    | Literal["NO_AUTOSIZE", "FIT_ALL_COLUMNS_TO_VIEW", "FIT_CONTENTS"]
+    | int = None,
     **default_column_parameters,
 ) -> AgGridReturn:
     """Renders a DataFrame using AgGrid.
@@ -157,6 +161,19 @@ def AgGrid(
         Initial column state (visibility, order, width, etc.).
         Format follows https://www.ag-grid.com/javascript-data-grid/column-state/#reference-state-applyColumnState
         Defaults to None.
+
+    columns_auto_size_mode : ColumnsAutoSizeMode | str | int, optional
+        How columns are auto-sized on first render. Maps to AG Grid's native
+        gridOptions.autoSizeStrategy:
+            - NO_AUTOSIZE: no automatic sizing (clears any autoSizeStrategy)
+            - FIT_ALL_COLUMNS_TO_VIEW: fit all columns into the grid width
+              ({"type": "fitGridWidth"})
+            - FIT_CONTENTS: size each column to the wider of its header and
+              rendered cell content ({"type": "fitCellContents"})
+        When set, this overrides any autoSizeStrategy already present in
+        gridOptions (including the fitGridWidth default that
+        GridOptionsBuilder.from_dataframe injects). Leave as None to keep
+        gridOptions untouched. Defaults to None.
 
     theme : str | StAggridTheme, optional
         Grid theme:
@@ -422,6 +439,37 @@ def AgGrid(
             DeprecationWarning,
         )
         gridOptions["autoSizeStrategy"] = {"type": "fitGridWidth"}
+
+    # Map columns_auto_size_mode to AG Grid's native autoSizeStrategy. When set
+    # explicitly it overrides any strategy already on gridOptions, including the
+    # fitGridWidth default that GridOptionsBuilder.from_dataframe injects (which
+    # otherwise collapses wide grids to minWidth and ignores FIT_CONTENTS).
+    if columns_auto_size_mode is not None:
+        if isinstance(columns_auto_size_mode, str):
+            try:
+                columns_auto_size_mode = ColumnsAutoSizeMode[
+                    columns_auto_size_mode.upper()
+                ]
+            except KeyError:
+                raise ValueError(
+                    f"{columns_auto_size_mode} is not a valid ColumnsAutoSizeMode. "
+                    f"Available options: {list(ColumnsAutoSizeMode.__members__)}"
+                )
+        else:
+            try:
+                columns_auto_size_mode = ColumnsAutoSizeMode(columns_auto_size_mode)
+            except ValueError:
+                raise ValueError(
+                    f"{columns_auto_size_mode} is not a valid ColumnsAutoSizeMode. "
+                    f"Available options: {list(ColumnsAutoSizeMode.__members__)}"
+                )
+
+        if columns_auto_size_mode == ColumnsAutoSizeMode.NO_AUTOSIZE:
+            gridOptions.pop("autoSizeStrategy", None)
+        elif columns_auto_size_mode == ColumnsAutoSizeMode.FIT_ALL_COLUMNS_TO_VIEW:
+            gridOptions["autoSizeStrategy"] = {"type": "fitGridWidth"}
+        elif columns_auto_size_mode == ColumnsAutoSizeMode.FIT_CONTENTS:
+            gridOptions["autoSizeStrategy"] = {"type": "fitCellContents"}
 
     # Create collector based solely on data_return_mode
     if data_return_mode == DataReturnMode.MINIMAL:
