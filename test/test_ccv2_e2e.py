@@ -138,3 +138,75 @@ def test_sort_by_header_click(page: Page):
 
     score_header.locator(".ag-header-cell-label").click()
     expect(score_header).to_have_attribute("aria-sort", "descending")
+
+
+def test_update_on_selection_roundtrip(page: Page):
+    """update_on=['selectionChanged'] must rerun Streamlit and deliver the
+    clicked row to Python via selected_rows.
+
+    Regression guard: clicking a row in a single-select grid configured only
+    with update_on (no update_mode) has to round-trip the selection back to
+    the script, not just highlight client-side.
+    """
+    grid = _grid(page, "update_on_selection_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    expect(grid.locator(".ag-row")).to_have_count(3)
+
+    echo = page.get_by_test_id("update-on-selection")
+    expect(echo).to_contain_text("NONE")
+
+    grid.locator(".ag-row[row-index='0'] .ag-cell").first.click()
+
+    # Streamlit reruns asynchronously; expect() retries until the value lands.
+    expect(echo).not_to_contain_text("NONE")
+    expect(echo).to_contain_text("A")
+
+
+def test_update_on_cell_value_changed_roundtrip(page: Page):
+    """update_on=['cellValueChanged'] must rerun Streamlit and deliver the
+    edited cell value to Python."""
+    grid = _grid(page, "update_on_edit_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    expect(grid.locator(".ag-row")).to_have_count(3)
+
+    echo = page.get_by_test_id("update-on-edit")
+    expect(echo).to_contain_text("x")
+    expect(echo).not_to_contain_text("zzz")
+
+    cell = grid.locator(".ag-row[row-index='0'] .ag-cell[col-id='label']").first
+    cell.dblclick()
+    page.keyboard.type("zzz")
+    page.keyboard.press("Enter")
+
+    expect(echo).to_contain_text("zzz")
+
+
+def test_columns_auto_size_mode_fit_contents(page: Page):
+    """columns_auto_size_mode=FIT_CONTENTS must size columns to their content,
+    overriding the fitGridWidth strategy that from_dataframe injects.
+
+    Regression guard: previously every column collapsed to a uniform minWidth
+    (~46px) because FIT_CONTENTS was ignored. A long-header column must end up
+    clearly wider than a short one, and no column may collapse to minWidth.
+    """
+    grid = _grid(page, "autosize_fit_contents_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    # autoSizeStrategy=fitCellContents runs just after first data render.
+    page.wait_for_timeout(1000)
+
+    def header_width(col_id: str) -> float:
+        cell = grid.locator(f".ag-header-cell[col-id='{col_id}']").first
+        box = cell.bounding_box()
+        return box["width"] if box else 0.0
+
+    rev = header_width("Rev")
+    qty_req = header_width("Qty Req (released jobs only)")
+
+    # Short "Rev" column stays narrow; the long-header column is sized to fit
+    # its much wider header text. If FIT_CONTENTS were ignored (fitGridWidth),
+    # both would collapse to the same ~46px minWidth.
+    assert rev > 0 and qty_req > 0, f"columns not measured: rev={rev} qty_req={qty_req}"
+    assert qty_req > 120, f"long-header column collapsed: {qty_req}px"
+    assert qty_req > rev + 40, (
+        f"columns look uniform (collapsed): qty_req={qty_req} rev={rev}"
+    )
