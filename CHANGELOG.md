@@ -1,6 +1,42 @@
 # CHANGELOG
 
 
+## v0.2.3 (2026-06-07)
+
+### Bug Fixes
+
+- Wire columns_auto_size_mode so FIT_CONTENTS sizes columns to content
+  ([`c058b8a`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/c058b8ad759b9f17a8e9e713365fa4c786e78a93))
+
+columns_auto_size_mode was exported as an enum but never consumed by AgGrid(), so passing
+  ColumnsAutoSizeMode.FIT_CONTENTS had no effect. Columns instead collapsed to a uniform minWidth
+  because GridOptionsBuilder.from_dataframe unconditionally injects autoSizeStrategy=fitGridWidth,
+  which squishes wide grids.
+
+Add columns_auto_size_mode as an explicit AgGrid() parameter that maps to AG Grid's native
+  autoSizeStrategy and overrides any strategy already on gridOptions: NO_AUTOSIZE clears it,
+  FIT_ALL_COLUMNS_TO_VIEW maps to fitGridWidth, FIT_CONTENTS maps to fitCellContents.
+
+Add e2e regression guards: FIT_CONTENTS on a wide from_dataframe grid sizes columns to content
+  (long-header column far wider than a short one) instead of collapsing; and update_on
+  selection/cellValueChanged round-trip to Python (the separately reported update_on issue, which
+  does not reproduce on current main).
+
+### Chores
+
+- Bump demo app requirement to v0.2.2
+  ([`729958c`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/729958c4d322181256aac09e8b6304972d7f85b7))
+
+- Restrict GITHUB_TOKEN permissions in tests workflow
+  ([`675d877`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/675d877a4bb6867a2a4e942583154d758f5ba5e9))
+
+CodeQL actions/missing-workflow-permissions: tests.yml declared no permissions block, so
+  GITHUB_TOKEN defaulted to broad scopes. The e2e job only checks out code and runs Playwright
+  tests, so contents: read is sufficient (the on-failure artifact upload uses the Actions runtime
+  token, not GITHUB_TOKEN scopes). release.yml and publish.yml already set least-privilege
+  permissions per job.
+
+
 ## v0.2.2 (2026-06-05)
 
 ### Bug Fixes
