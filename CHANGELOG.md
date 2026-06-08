@@ -1,6 +1,35 @@
 # CHANGELOG
 
 
+## v0.2.4 (2026-06-08)
+
+### Bug Fixes
+
+- Emit valid font-family for theme="streamlit" instead of doubled quotes
+  ([`dcd77e0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/dcd77e05bb87229f4c635f39765f746b3241c8bb))
+
+Streamlit injects --st-font on the component host as a CSS-normalized, quoted stack such as '"Source
+  Sans", sans-serif'. streamlitFontFamily took the first comma token without stripping the
+  surrounding quotes and passed it as {googleFont}, so AG Grid re-quoted the already-quoted name and
+  emitted an invalid --ag-font-family of '""Source Sans"", ""Source Sans""'. Browsers drop the
+  invalid declaration and the grid falls back to the UA default sans, so theme="streamlit" rendered
+  grid text in a different font than the rest of the app.
+
+Parse the full font stack, strip wrapping single/double quotes from each token, and return the plain
+  names so AG Grid quotes them once. Drop the googleFont fetch: in CCv2 the grid renders inline in
+  the same document where Streamlit already self-hosts the face, so no web-font load is needed. Also
+  update the empty-st-font fallback from the stale "Source Sans Pro" to modern Streamlit's
+  self-hosted "Source Sans, sans-serif".
+
+Verified in a browser (Streamlit 1.55, built wheel): .ag-cell computed font-family equals
+  document.body and --ag-font-family contains no doubled quotes.
+
+### Chores
+
+- Bump demo app requirement to v0.2.3
+  ([`21b8d50`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/21b8d501e7190b8afcad64c4cb1383e94b44c891))
+
+
 ## v0.2.3 (2026-06-07)
 
 ### Bug Fixes
