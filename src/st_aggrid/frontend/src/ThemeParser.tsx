@@ -53,7 +53,7 @@ function getStreamlitThemeFromCSS(el?: Element | ShadowRoot | null): StreamlitTh
         textColor: styles.getPropertyValue('--st-text-color').trim() || '#262730',
         backgroundColor: bgColor,
         secondaryBackgroundColor: styles.getPropertyValue('--st-secondary-background-color').trim() || '#f0f2f6',
-        font: styles.getPropertyValue('--st-font').trim() || 'Source Sans Pro',
+        font: styles.getPropertyValue('--st-font').trim() || 'Source Sans, sans-serif',
         base: isDark ? 'dark' : 'light',
     }
 }
@@ -88,9 +88,17 @@ class ThemeParser {
         iconSetQuartzRegular: iconSetQuartzRegular
     }
 
-    private streamlitFontFamily(streamlitTheme: StreamlitThemeFromCSS) {
-        const font = streamlitTheme.font?.split(",").at(0)?.trim() || "Source Sans Pro"
-        return [font, {googleFont: font}]
+    private streamlitFontFamily(streamlitTheme: StreamlitThemeFromCSS): string[] {
+        // streamlitTheme.font is a full computed/normalized stack, e.g. '"Source Sans", sans-serif'.
+        // getComputedStyle / --st-font wrap multi-word families in quotes; strip them so AG Grid
+        // (which re-quotes any family containing spaces) does not emit doubled quotes like ""Source Sans"".
+        // The grid renders inline in the same document where Streamlit already loaded the face, so we
+        // reference the family directly and do not force a googleFont fetch.
+        const stack = (streamlitTheme.font || "Source Sans, sans-serif")
+            .split(",")
+            .map(s => s.trim().replace(/^['"]+|['"]+$/g, ""))
+            .filter(Boolean)
+        return stack.length ? stack : ["sans-serif"]
     }
 
     streamlitRecipe(el?: Element | ShadowRoot | null): Theme{
