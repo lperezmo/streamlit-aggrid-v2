@@ -185,6 +185,33 @@ def test_update_on_cell_value_changed_roundtrip(page: Page):
     expect(echo).to_contain_text("zzz")
 
 
+def test_manual_update_button_returns_grid_state(page: Page):
+    """update_mode='MANUAL' shows a toolbar update button; clicking it must
+    send the current grid state (including a local edit) back to Python.
+
+    Regression guard: the button's handler used to be a debug console.log
+    only, so clicking it never returned anything."""
+    grid = _grid(page, "manual_update_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+
+    echo = page.get_by_test_id("manual-update-data")
+    expect(echo).to_contain_text("m1")
+    expect(echo).not_to_contain_text("edited")
+
+    cell = grid.locator(".ag-row[row-index='0'] .ag-cell[col-id='item']").first
+    cell.dblclick()
+    page.keyboard.type("edited")
+    page.keyboard.press("Enter")
+
+    # The edit alone must not rerun Streamlit (update_on only listens for
+    # columnPinned, which never fires here).
+    page.wait_for_timeout(500)
+    expect(echo).not_to_contain_text("edited")
+
+    grid.locator(".grid-toolbar .update-button").click()
+    expect(echo).to_contain_text("edited")
+
+
 def test_columns_auto_size_mode_fit_contents(page: Page):
     """columns_auto_size_mode=FIT_CONTENTS must size columns to their content,
     overriding the fitGridWidth strategy that from_dataframe injects.

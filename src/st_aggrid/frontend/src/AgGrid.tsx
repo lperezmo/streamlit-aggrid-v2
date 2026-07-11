@@ -184,6 +184,14 @@ class AgGrid extends React.Component<AgGridProps, State> {
     this.eventCleanupFns = []
   }
 
+  private getCollector() {
+    if (this.props.componentData.data_return_mode === "CUSTOM") {
+      return new CustomCollector(this.collectGridReturn || (() => {}))
+    }
+    // AS_INPUT, FILTERED, FILTERED_AND_SORTED, MINIMAL
+    return new LegacyCollector()
+  }
+
   private async returnGridValue(
     eventData: any,
     streamlitRerunEventTriggerName: string
@@ -191,6 +199,18 @@ class AgGrid extends React.Component<AgGridProps, State> {
     if (this.state.debug) {
       console.log(`refreshing grid from ${streamlitRerunEventTriggerName}`)
       console.log("dataReturnMode is ", this.props.componentData.data_return_mode)
+    }
+
+    // Check shouldGridReturn before collecting: skipped events shouldn't pay
+    // for a full grid walk.
+    if (this.shouldGridReturn) {
+      const shouldReturn = this.shouldGridReturn({ streamlitRerunEventTriggerName, eventData });
+      if (!shouldReturn) {
+        if (this.state.debug) {
+          console.log(`shouldGridReturn blocked return for event: ${streamlitRerunEventTriggerName}`);
+        }
+        return; // Don't send value back
+      }
     }
 
     // Create collector context
@@ -201,20 +221,8 @@ class AgGrid extends React.Component<AgGridProps, State> {
       streamlitRerunEventTriggerName: streamlitRerunEventTriggerName,
     }
 
-    const collectorFactory = {
-      AS_INPUT: new LegacyCollector(),
-      FILTERED: new LegacyCollector(),
-      FILTERED_AND_SORTED: new LegacyCollector(),
-      MINIMAL: new LegacyCollector(),
-      CUSTOM: new CustomCollector(this.collectGridReturn || (() => {})),
-    }
-
     try {
-      // Determine and create appropriate collector
-      const collector =
-        collectorFactory[
-          this.props.componentData.data_return_mode as keyof typeof collectorFactory
-        ]
+      const collector = this.getCollector()
 
       // Process response using collector
       const result = await collector.processResponse(context)
@@ -225,16 +233,6 @@ class AgGrid extends React.Component<AgGridProps, State> {
             `Grid response processed by ${collector.getCollectorType()}:`,
             result.data
           )
-        }
-        // Check shouldGridReturn before sending value back to Python
-        if (this.shouldGridReturn) {
-          const shouldReturn = this.shouldGridReturn({ streamlitRerunEventTriggerName, eventData });
-          if (!shouldReturn) {
-            if (this.state.debug) {
-              console.log(`shouldGridReturn blocked return for event: ${streamlitRerunEventTriggerName}`);
-            }
-            return; // Don't send value back
-          }
         }
         this.props.setStateValue("grid_return", result.data)
       } else {
@@ -349,31 +347,12 @@ class AgGrid extends React.Component<AgGridProps, State> {
     onGridReady && onGridReady(event)
   }
 
-  private processPreselection() {
-    //TODO: do not pass grid Options that doesn't exist in aggrid (preSelectAllRows,  preSelectedRows)
-    var preSelectAllRows =
-      this.props.componentData.gridOptions["preSelectAllRows"] || false
-
-    if (preSelectAllRows) {
-      this.gridApiRef?.selectAll()
-    } else {
-      var preselectedRows = this.props.componentData.gridOptions["preSelectedRows"]
-      if (preselectedRows && preselectedRows.length > 0) {
-        for (var idx in preselectedRows) {
-          this.gridApiRef
-            ?.getRowNode(preselectedRows[idx])
-            ?.setSelected(true, false)
-        }
-      }
-    }
-  }
-
   public render = (): ReactNode => {
     let manualUpdate = this.props.componentData.manual_update === true
 
     return (
       <div
-        id="gridContainer"
+        className="gridContainer"
         ref={this.gridContainerRef}
         style={this.defineContainerHeight()}
       >
@@ -392,6 +371,15 @@ class AgGrid extends React.Component<AgGridProps, State> {
           onManualUpdateClick={() => {
             if (this.state.debug) {
               console.log("Manual update triggered")
+            }
+            this.returnGridValue({}, "manualUpdate")
+          }}
+          onFullscreenClick={() => {
+            const gridContainer = this.gridContainerRef.current
+            if (!document.fullscreenElement) {
+              gridContainer?.requestFullscreen()
+            } else {
+              document.exitFullscreen()
             }
           }}
         />

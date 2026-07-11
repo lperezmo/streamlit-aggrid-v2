@@ -149,7 +149,38 @@ st.html(
     """
 )
 
-# 9) columns_auto_size_mode=FIT_CONTENTS on a wide from_dataframe grid. The
+# 9) Manual update: with update_mode="MANUAL" the toolbar shows an update
+# button that must send the current grid state (including local edits) back
+# to Python when clicked. update_on is pinned to an event the test never
+# fires so the button is the only return path.
+manual_df = pd.DataFrame({"item": ["m1", "m2"], "val": [1, 2]})
+manual_options = {
+    "columnDefs": [
+        {"headerName": "Item", "field": "item", "editable": True},
+        {
+            "headerName": "Val",
+            "field": "val",
+            "editable": True,
+            "type": ["numericColumn", "numberColumnFilter"],
+        },
+    ],
+}
+manual_result = AgGrid(
+    manual_df,
+    manual_options,
+    update_mode="MANUAL",
+    show_toolbar=True,
+    update_on=["columnPinned"],
+    key="manual_update_grid",
+)
+st.html(
+    f"""
+    <h2>manual update</h2>
+    <pre data-testid='manual-update-data'>{manual_result.data.to_string()}</pre>
+    """
+)
+
+# 10) columns_auto_size_mode=FIT_CONTENTS on a wide from_dataframe grid. The
 # columns must size to their content (a long header column far wider than a
 # short one), not collapse to a uniform minWidth. Regression guard for the
 # reported FIT_CONTENTS-collapses-every-column issue: from_dataframe injects

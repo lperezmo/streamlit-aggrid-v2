@@ -6,6 +6,7 @@ interface GridToolBarProps {
   onQuickSearchChange?: (value: string) => void; // Optional
   onDownloadClick?: () => void; // Optional
   onManualUpdateClick?: () => void; // Optional
+  onFullscreenClick?: () => void; // Optional
   showFullscreenButton?: boolean;
   showDownloadButton?: boolean;
   showSearch?: boolean;
@@ -17,6 +18,7 @@ const GridToolBar: React.FC<GridToolBarProps> = ({
   onQuickSearchChange,
   onDownloadClick,
   onManualUpdateClick,
+  onFullscreenClick,
   showFullscreenButton = true,
   showDownloadButton = true,
   showSearch = true,
@@ -146,14 +148,7 @@ const GridToolBar: React.FC<GridToolBarProps> = ({
       {showFullscreenButton && !collapsed && (
         <button
           className="toolbar-button fullscreen-button"
-          onClick={() => {
-            const gridContainer = document.getElementById("gridContainer");
-            if (!document.fullscreenElement) {
-              gridContainer?.requestFullscreen();
-            } else {
-              document.exitFullscreen();
-            }
-          }}
+          onClick={onFullscreenClick}
           title="Toggle Fullscreen View"
         >
           <svg
