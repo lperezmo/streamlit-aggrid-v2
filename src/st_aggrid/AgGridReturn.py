@@ -507,24 +507,35 @@ class AgGridReturn(Mapping):
         # Fall back to __dict__ access
         return self.__dict__[key]
 
+    def _public_attribute_names(self):
+        """Names of public attributes and methods, without evaluating them.
+
+        inspect.getmembers(self) would trigger every property getter (data,
+        selected_data, ...), rebuilding DataFrames just to enumerate names.
+        Inspecting the class instead returns the property descriptors
+        unevaluated; instance attributes are read from __dict__.
+        """
+        class_names = [
+            name
+            for name, _ in inspect.getmembers(type(self))
+            if not name.startswith("_")
+        ]
+        instance_names = [
+            name for name in self.__dict__ if not name.startswith("_")
+        ]
+        return sorted(set(class_names) | set(instance_names))
+
     def __iter__(self):
         """Iterate over public attributes."""
-        return (
-            name for name, _ in inspect.getmembers(self) if not name.startswith("_")
-        )
+        return iter(self._public_attribute_names())
 
     def __len__(self):
         """Return number of public attributes."""
-        return len(
-            [name for name, _ in inspect.getmembers(self) if not name.startswith("_")]
-        )
+        return len(self._public_attribute_names())
 
     def keys(self):
         """Return all available keys (attributes + grid_response keys)."""
-        # Get public attribute names
-        attr_keys = [
-            name for name, _ in inspect.getmembers(self) if not name.startswith("_")
-        ]
+        attr_keys = self._public_attribute_names()
 
         # Get grid_response keys for backward compatibility
         grid_response = self.__dict__.get("grid_response", {})
@@ -536,4 +547,4 @@ class AgGridReturn(Mapping):
 
     def values(self):
         """Return all values for public attributes."""
-        return [value for _, value in inspect.getmembers(self) if not _.startswith("_")]
+        return [getattr(self, name) for name in self._public_attribute_names()]

@@ -486,9 +486,13 @@ def AgGrid(
 
         collector = LegacyCollector(
             data_return_mode=data_return_mode,
-            try_to_convert_back_to_original_types=True,
+            try_to_convert_back_to_original_types=try_to_convert_back_to_original_types,
             conversion_errors=conversion_errors,
-            frame_dtypes=frame_dtypes,
+            # Dtype back-conversion is gated on frame_dtypes being set, so
+            # honoring the (deprecated) opt-out means withholding them here.
+            frame_dtypes=frame_dtypes
+            if try_to_convert_back_to_original_types
+            else None,
         )
 
     # Create initial response object that callbacks can safely reference
