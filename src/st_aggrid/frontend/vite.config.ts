@@ -20,7 +20,9 @@ export default defineConfig(() => {
       // Import CSS files normally
     },
     build: {
-      minify: isDev ? false : "esbuild",
+      // Vite 8 minifies with oxc (Rolldown); the old "esbuild" value now
+      // requires esbuild as a separate install and is deprecated.
+      minify: !isDev,
       outDir: "build",
       sourcemap: isDev,
       lib: {
@@ -35,14 +37,6 @@ export default defineConfig(() => {
           assetFileNames: "index-[hash][extname]",
         },
       },
-      ...(!isDev && {
-        esbuild: {
-          drop: ["debugger"],
-          minifyIdentifiers: true,
-          minifySyntax: true,
-          minifyWhitespace: true,
-        },
-      }),
     },
   } satisfies UserConfig;
 });
