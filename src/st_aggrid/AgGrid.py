@@ -10,6 +10,7 @@ try:
     import pyarrow.lib
 except ImportError:
     pyarrow = None
+from st_aggrid import _compat
 from st_aggrid.shared import (
     GridUpdateMode,
     DataReturnMode,
@@ -43,12 +44,11 @@ def _get_component_func():
     if _component_func is None:
         if not _RELEASE:
             warnings.warn("WARNING: ST_AGGRID is in development mode.")
-        _component_func = st.components.v2.component(
+        _component_func = _compat.component(
             "streamlit-aggrid-v2.st_aggrid",
             html='<div id="root"></div>',
             js="index-*.js",
             css="index-*.css",
-            isolate_styles=False,
         )
     return _component_func
 
