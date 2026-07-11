@@ -1,6 +1,40 @@
 # CHANGELOG
 
 
+## v0.2.5 (2026-07-11)
+
+### Bug Fixes
+
+- Support Streamlit 1.51 and 1.52 via isolate_styles compat shim
+  ([`2b268d6`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/2b268d6cf4a3fbcc3ad0a16bb6237a6bcbb54e0f))
+
+The component registered with st.components.v2.component(..., isolate_styles=False), but that
+  keyword only exists on the registration call from Streamlit 1.53. On 1.51 / 1.52 it belongs to the
+  per-call renderer instead, so importing st_aggrid raised TypeError even though pyproject declares
+  streamlit >= 1.51.
+
+New st_aggrid/_compat.py resolves the difference once at import time and always renders with style
+  isolation disabled, whichever Streamlit is installed. Same approach as st-rsuite 0.3.4.
+
+- test/test_registration_smoke.py: browser-less guard that discovery registers the component and the
+  shim finds the isolate_styles toggle; verified locally on 1.51.0, 1.52.2 and 1.59.1. - tests.yml:
+  new lint (ruff) job and a smoke job across a Streamlit 1.51 -> latest matrix. - e2e go_to_app
+  fixture: first-attach timeout 5s -> 15s; cold starts routinely blew it and flaked the whole suite.
+  - conftest: drop unused sys import (ruff F401).
+
+### Chores
+
+- Build frontend before smoke matrix in CI
+  ([`9280d95`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/9280d95afe775aa49d7f17e4bb246e452ca63964))
+
+The smoke job installs the wheel via the test conftest; without the npm build the wheel ships no
+  frontend assets and component discovery cannot resolve asset_dir, failing on every Streamlit
+  version.
+
+- Bump demo app requirement to v0.2.4
+  ([`510a4cb`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/510a4cbcd9ceff4bd5368d91501eb89d097f10cf))
+
+
 ## v0.2.4 (2026-06-08)
 
 ### Bug Fixes
