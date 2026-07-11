@@ -1,6 +1,38 @@
 # CHANGELOG
 
 
+## v0.2.7 (2026-07-11)
+
+### Bug Fixes
+
+- Wire manual update button and per-grid fullscreen in the toolbar
+  ([`a7352c3`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/a7352c31b7d44e501b0ea26815d1bb5180b221e9))
+
+Two toolbar actions were broken in the CCv2 world:
+
+- The manual update button (update_mode=MANUAL) only logged to the console in debug mode; clicking
+  it never sent anything to Streamlit. It now calls returnGridValue, so the current grid state
+  including local edits round-trips to Python. - The fullscreen button looked up
+  document.getElementById with a fixed gridContainer id. CCv2 renders without an iframe, so every
+  grid on the page shared that id (invalid DOM) and fullscreen always targeted the first grid. The
+  container is now a class and the handler goes through the React ref of its own grid.
+
+Cleanups in the same pass:
+
+- shouldGridReturn is evaluated before collection instead of after, so blocked events no longer pay
+  for a full grid walk. - returnGridValue instantiated five collectors per event; it now creates the
+  single one the configured data_return_mode needs. - Removed processPreselection, dead since the
+  CCv2 rewrite.
+
+New e2e test: edit a cell on a MANUAL grid (no rerun), click the toolbar update button, and assert
+  the edit reaches Python. Frontend bundle rebuilt.
+
+### Chores
+
+- Bump demo app requirement to v0.2.6
+  ([`9d36128`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/9d361286b2e6a4a7de62112dc4979b807c9507f0))
+
+
 ## v0.2.6 (2026-07-11)
 
 ### Bug Fixes
