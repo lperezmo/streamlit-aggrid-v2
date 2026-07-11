@@ -42,6 +42,37 @@ def _parse_data_and_grid_options(
 ):
     column_types = None
 
+    # Parse grid_options first, independently of data, so a JSON string or a
+    # path to a JSON file works whether or not data was supplied. (It used to
+    # live in an elif only reachable when data was None, so combining a
+    # DataFrame with string gridOptions crashed downstream on a str.)
+    if grid_options is None:
+        # May still be inferred from data below; empty grid otherwise.
+        grid_options = {}
+    elif isinstance(grid_options, Mapping):
+        pass
+    elif isinstance(grid_options, (str, Path)):
+        if isinstance(grid_options, Path):
+            grid_options = str(Path(grid_options).resolve().absolute())
+        # if grid_options is a path to a json file. Validate and load it as dictionary.
+        if str(grid_options).endswith(".json") and os.path.exists(grid_options):
+            try:
+                with open(os.path.abspath(grid_options)) as f:
+                    grid_options = json.dumps(json.load(f))
+            except Exception as ex:
+                raise Exception(f"Error reading {grid_options}. {ex}")
+
+        # if grid_options is a json string load is as as dict
+        try:
+            grid_options = json.loads(grid_options)
+        except Exception:
+            raise Exception("Error parsing gridOptions parameter as raw json.")
+    else:
+        raise ValueError(
+            "gridOptions must be a dict, a JSON string, or a path to a JSON file, "
+            f"got {type(grid_options).__name__}."
+        )
+
     if data is not None:
         if isinstance(data, (str, Path)):
             if isinstance(data, Path):
@@ -76,43 +107,26 @@ def _parse_data_and_grid_options(
                     data[c] = data[c].apply(lambda s: s.isoformat())
 
         # if there is data and no grid options, create grid options from the data
-        if (data is not None) and (not grid_options):
+        if not grid_options:
             gb = GridOptionsBuilder.from_dataframe(data, **default_column_parameters)
             grid_options = gb.build()
 
         # computes rows data types before adding id column
         column_types = data.dtypes
 
-    # if grid options is supplied as a dictionary, assume it is valid and use it
-    elif isinstance(grid_options, Mapping):
-        grid_options = grid_options
-
-    elif isinstance(grid_options, (str, Path)):
-        if isinstance(grid_options, Path):
-            grid_options = str(Path(grid_options).resolve().absolute())
-        # if grid_options is a path to a json file. Validate and load it as dictionary.
-        if str(grid_options).endswith(".json") and os.path.exists(grid_options):
-            try:
-                with open(os.path.abspath(grid_options)) as f:
-                    grid_options = json.dumps(json.load(f))
-            except Exception as ex:
-                raise Exception(f"Error reading {grid_options}. {ex}")
-
-        # if grid_options is a json string load is as as dict
-        try:
-            grid_options = json.loads(grid_options)
-        except Exception:
-            raise Exception("Error parsing data parameter as raw json.")
-
     # if data is supplied via gridOptions.rowData move it to data parameter
-    if (grid_options.get("rowData", None)) and use_json_serialization is not True:
-        if data:
+    if (grid_options.get("rowData", None) is not None) and use_json_serialization is not True:
+        if data is not None:
             raise ValueError(
                 "Data was supplied by both data and gridOptions rowData. Use only one to load data into the grid."
             )
-        else:
-            data = grid_options.pop("rowData")
+        data = grid_options.pop("rowData")
+        if isinstance(data, str):
             data = pd.read_json(StringIO(data))
+        else:
+            # rowData given the AG Grid way: a list of record dicts.
+            data = pd.DataFrame(data)
+        column_types = data.dtypes
 
     # if rowId is not defined, create an unique row_id as the rows_hash
     if "getRowId" not in grid_options and data is not None:
@@ -121,7 +135,7 @@ def _parse_data_and_grid_options(
             map(str, range(data.shape[0]))
         )  ##pd.util.hash_pandas_object(data).astype(str)
 
-    if use_json_serialization is True:
+    if use_json_serialization is True and data is not None:
         grid_options["rowData"] = data.to_json(orient="records")
         data = None
 

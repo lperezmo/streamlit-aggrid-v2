@@ -1,4 +1,6 @@
+import warnings
 from collections import defaultdict
+
 from st_aggrid.shared import getAllColumnProps, getAllGridOptions
 
 class GridOptionsBuilder:
@@ -59,7 +61,10 @@ class GridOptionsBuilder:
             elif k in GRID_OPTIONS:
                 gb.configure_grid_options(**{k: v})
             else:
-                print(f"{k} is not a valid gridOption or columnDef.")
+                warnings.warn(
+                    f"{k} is not a valid gridOption or columnDef and was ignored.",
+                    stacklevel=2,
+                )
 
         if any("." in col for col in map(str, dataframe.columns)):
             gb.configure_grid_options(suppressFieldDotNotation=True)
@@ -115,22 +120,6 @@ class GridOptionsBuilder:
                 Key value pairs that will be merged to defaultColDef dict.
                 Chech ag-grid documentation.
         """
-        # if sorteable is not None:
-        #     sortable = sorteable
-
-        # defaultColDef = {
-        #     "minWidth": min_column_width,
-        #     "editable": editable,
-        #     "filter": filterable,
-        #     "resizable": resizable,
-        #     "sortable": sortable,
-        # }
-        # if groupable:
-        #     defaultColDef["enableRowGroup"] = groupable
-        defaultColDef = {}
-        if other_default_column_properties:
-            defaultColDef = {**defaultColDef, **other_default_column_properties}
-
         self.__grid_options["defaultColDef"] = {
             **self.__grid_options["defaultColDef"],
             **other_default_column_properties,
