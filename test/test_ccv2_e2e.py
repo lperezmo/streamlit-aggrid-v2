@@ -28,8 +28,12 @@ def streamlit_app():
 def go_to_app(page: Page, streamlit_app: StreamlitRunner):
     page.goto(streamlit_app.server_url)
     # Wait for the first grid to be attached so subsequent assertions don't
-    # race against initial Streamlit hydration.
-    expect(page.locator(".st-key-grid_from_dataframe .stBidiComponent")).to_be_attached()
+    # race against initial Streamlit hydration. The generous timeout absorbs
+    # cold starts (first page load after the server boots plus a fresh
+    # Chromium), which routinely blow the default 5s and flake the suite.
+    expect(page.locator(".st-key-grid_from_dataframe .stBidiComponent")).to_be_attached(
+        timeout=15_000
+    )
 
 
 def _grid(page: Page, key: str):
