@@ -16,7 +16,7 @@
   box-sizing: border-box; /* Include padding and border in the height */
 }
 
-#gridContainer {
+.gridContainer {
   position: relative;
   flex: 1; /* Allow the grid to take the remaining space */
   width: 100%;

@@ -20,7 +20,7 @@
     height: 36px; /* Set fixed height */
 }
 
-#gridContainer:hover .grid-toolbar {
+.gridContainer:hover .grid-toolbar {
     opacity: 1; /* Show toolbar on hover */
     visibility: visible; /* Make toolbar visible */
 }
