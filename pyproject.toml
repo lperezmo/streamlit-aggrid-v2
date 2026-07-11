@@ -1,6 +1,6 @@
 [project]
 name = "streamlit-aggrid-v2"
-version = "0.2.5"
+version = "0.2.6"
 description = "AG Grid component for Streamlit — interactive tables, editing, filtering & more."
 readme = "README.md"
 requires-python = ">=3.10"

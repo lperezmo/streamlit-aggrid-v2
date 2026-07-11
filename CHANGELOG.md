@@ -1,6 +1,43 @@
 # CHANGELOG
 
 
+## v0.2.6 (2026-07-11)
+
+### Bug Fixes
+
+- Parse gridOptions independently of data and repair input edge cases
+  ([`9d35b74`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/9d35b74c08cf7284654e845239e81cf98460d1dd))
+
+_parse_data_and_grid_options only parsed string/Path gridOptions in an elif branch reachable when
+  data was None, so combining a DataFrame with JSON-string gridOptions crashed on str.get
+  downstream. The gridOptions parsing now runs first, for every input combination, and rejects
+  unsupported types with a clear message.
+
+Also fixed in the same pass:
+
+- if data: on a DataFrame raised the pandas ambiguous-truth-value error instead of the intended
+  message when data and gridOptions.rowData were both supplied; now checks data is not None. -
+  AgGrid() with neither data nor gridOptions crashed with NoneType.get; it now renders an empty
+  grid. - gridOptions rowData given as a list of record dicts (the AG Grid way) crashed in
+  pd.read_json; lists are now accepted alongside JSON strings, and dtypes are captured for
+  round-trip conversion. - use_json_serialization=True without data crashed on data.to_json. - The
+  deprecated try_to_convert_back_to_original_types flag was silently ignored (hardcoded True);
+  opting out now withholds frame_dtypes so conversion is actually skipped. - AgGridReturn
+  len()/iter()/keys() used inspect.getmembers(self), which evaluated every property and rebuilt
+  DataFrames just to list attribute names; names are now taken from the class unevaluated. -
+  GridOptionsBuilder.from_dataframe reported unknown kwargs via print(); now warnings.warn. Removed
+  dead defaultColDef block.
+
+New test/test_python_layer.py covers the parsing matrix, the AgGridReturn Mapping interface
+  (including a guard that iteration does not trigger property getters), and the builder warning.
+  Browser-less, runs in under a second.
+
+### Chores
+
+- Bump demo app requirement to v0.2.5
+  ([`a05aeae`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/a05aeaee0ac6e937b4db25d0ff30022299c4b886))
+
+
 ## v0.2.5 (2026-07-11)
 
 ### Bug Fixes
