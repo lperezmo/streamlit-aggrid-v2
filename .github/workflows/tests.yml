@@ -22,8 +22,7 @@ jobs:
 
   # Browser-less registration guard across every supported Streamlit version.
   # Catches API drift like isolate_styles moving between the registration call
-  # (>= 1.53) and the per-call renderer (1.51 / 1.52). Uses the committed
-  # frontend build artifacts, so no npm step is needed.
+  # (>= 1.53) and the per-call renderer (1.51 / 1.52).
   smoke:
     name: Smoke (Streamlit ${{ matrix.streamlit || 'latest' }})
     runs-on: ubuntu-latest
@@ -34,6 +33,18 @@ jobs:
         streamlit: ['1.51.*', '1.52.*', '1.53.*', '1.54.*', '1.55.*', '1.56.*', '1.57.*', '1.58.*', '']
     steps:
       - uses: actions/checkout@v6
+
+      # The conftest builds and installs the wheel; without a frontend build
+      # the wheel ships no assets and component discovery cannot resolve
+      # asset_dir, failing the smoke test on every Streamlit version.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: src/st_aggrid/frontend
+
       - uses: actions/setup-python@v6
         with: { python-version: '3.13' }
       - name: Install uv
