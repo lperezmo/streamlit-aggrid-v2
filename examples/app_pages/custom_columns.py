@@ -1,4 +1,4 @@
-"""Column config — advanced column definitions with GridOptionsBuilder."""
+"""Column config: advanced column definitions with GridOptionsBuilder."""
 
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder

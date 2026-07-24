@@ -1,7 +1,7 @@
 [project]
 name = "streamlit-aggrid-v2"
 version = "0.2.7"
-description = "AG Grid component for Streamlit — interactive tables, editing, filtering & more."
+description = "AG Grid component for Streamlit: interactive tables, editing, filtering and more."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -75,3 +75,17 @@ commit_message = "chore(release): v{version}"
 
 [tool.ruff]
 extend-exclude = ["development/"]
+
+[tool.ruff.lint]
+# Pinned explicitly rather than left to ruff's defaults. The dev dependency is
+# `ruff>=0.9.0` and the CI action resolves that to the newest release, so the
+# rule set was whatever the latest ruff happened to default to. Ruff 0.16.0
+# raised the default from 59 rules to 413, which turned CI red on unchanged
+# code: 143 findings on main, none of them regressions. These four codes are
+# ruff's pre-0.16 default, so this keeps the suite exactly as it was and makes
+# it independent of the installed ruff version.
+#
+# Adopting the 0.16 defaults is a reasonable thing to want, but it is a
+# separate change: it needs those 143 findings triaged rather than swept in
+# alongside unrelated work.
+select = ["E4", "E7", "E9", "F"]

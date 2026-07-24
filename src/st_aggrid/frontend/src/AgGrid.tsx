@@ -272,6 +272,10 @@ class AgGrid extends React.Component<AgGridProps, State> {
 
     if (!isEqual(prevGridOptions, currGridOptions)) {
       let go = parseGridOptions(this.props.componentData, this.props.parentElement)
+      // Row data travels on its own (and is a raw JSON string when Python used
+      // use_json_serialization), so pushing it here would hand AG Grid a
+      // string instead of rows. The data_hash block below owns row updates.
+      delete go.rowData
       this.gridApiRef?.updateGridOptions(go)
     }
 
@@ -318,6 +322,17 @@ class AgGrid extends React.Component<AgGridProps, State> {
   private onGridReady(event: GridReadyEvent) {
     this.gridApiRef = event.api
     this.setState({ api: event.api })
+
+    // Apply the initial column state here: componentDidUpdate only reacts to a
+    // change against prevProps, so a state that is present from the first
+    // render (or unchanged across reruns) would never be applied at all.
+    const columnsState = this.props.componentData.columns_state
+    if (columnsState != null) {
+      event.api.applyColumnState({
+        state: columnsState,
+        applyOrder: true,
+      })
+    }
 
     if (this.props.componentData.server_sync_strategy === "client_wins") {
       const cellEditHandler = (event: CellValueChangedEvent) => {

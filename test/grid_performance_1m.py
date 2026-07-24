@@ -230,7 +230,7 @@ if st.session_state.page_load_times:
 
 # Add a manual refresh button for testing
 if st.button(
-    "🔄 Manual Refresh Test",
+    "Manual Refresh Test",
     help="Click to manually trigger a page refresh for testing",
 ):
     st.rerun()

@@ -375,11 +375,16 @@ class GridOptionsBuilder:
     def build(self):
         """Builds the gridOptions dictionary
 
+        Building does not mutate the builder, so the same builder can be built
+        once per grid. (It used to replace the internal columnDefs mapping with
+        a list, which made a second build() raise AttributeError.)
+
         Returns:
             dict: Returns a dicionary containing the configured grid options
         """
-        self.__grid_options["columnDefs"] = list(
+        grid_options = self.__grid_options.copy()
+        grid_options["columnDefs"] = list(
             self.__grid_options["columnDefs"].values()
         )
 
-        return self.__grid_options
+        return grid_options

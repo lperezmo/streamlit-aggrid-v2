@@ -1,4 +1,4 @@
-"""Data return modes — control what data comes back to Python."""
+"""Data return modes: control what data comes back to Python."""
 
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode
@@ -31,7 +31,7 @@ st.info(
         "As input": "Returns the original DataFrame regardless of grid state.",
         "Filtered": "Returns only rows that pass the active filters (original sort order).",
         "Filtered & sorted": "Returns rows matching filters, in the grid's current sort order.",
-        "Minimal": "Returns only the grid's internal state — lightest payload.",
+        "Minimal": "Returns only the grid's internal state: lightest payload.",
     }[mode_label],
     icon=":material/info:",
 )

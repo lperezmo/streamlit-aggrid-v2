@@ -488,7 +488,7 @@ python -m build creates sdist first then builds wheel from it, which strips giti
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
-- Bump to v0.1.1 — rebuild with frontend assets included
+- Bump to v0.1.1: rebuild with frontend assets included
   ([`63f98f3`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/63f98f32703c992ea30108ac74dd6c2990901d36))
 
 v0.1.0 on PyPI was published without frontend build artifacts. This release includes the complete

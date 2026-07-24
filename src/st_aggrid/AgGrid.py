@@ -58,6 +58,30 @@ def _on_grid_return_change():
     pass
 
 
+def _reraise_with_hint(ex: Exception, hint: str):
+    """Re-raise ``ex`` with an extra hint, preserving type and traceback.
+
+    Rebuilding the exception with ``type(ex)(*ex.args)`` breaks for any
+    exception whose constructor does not take its own args back (for example
+    StreamlitDuplicateElementId or json.JSONDecodeError) and blows up on
+    exceptions with empty args, destroying the original error. Mutating
+    ``args`` in place skips the constructor entirely, so the type and the
+    traceback both survive.
+
+    The hint has to land in ``str(ex)`` to do any good: Streamlit renders the
+    exception message and the formatted traceback, and neither one includes
+    ``__notes__``, so a note on its own is visible only in the server console.
+    """
+    add_note = getattr(ex, "add_note", None)
+    if ex.args and isinstance(ex.args[0], str):
+        ex.args = (f"{ex.args[0]}. {hint}", *ex.args[1:])
+        raise ex
+    if add_note is not None:
+        add_note(hint)
+        raise ex
+    raise RuntimeError(f"{ex}. {hint}") from ex
+
+
 def AgGrid(
     data: Union[pd.DataFrame, str] = None,
     gridOptions: typing.Dict = None,
@@ -175,15 +199,15 @@ def AgGrid(
         GridOptionsBuilder.from_dataframe injects). Leave as None to keep
         gridOptions untouched. Defaults to None.
 
-    theme : str | StAggridTheme, optional
-        Grid theme:
+    theme : str | AgGridTheme | StAggridTheme, optional
+        Grid theme. Strings must be one of the AgGridTheme members:
             - 'streamlit': Matches Streamlit's default styling
-            - 'light': AG Grid balham-light theme
-            - 'dark': AG Grid balham-dark theme
-            - 'blue': AG Grid blue theme
-            - 'fresh': AG Grid fresh theme
+            - 'quartz': AG Grid quartz theme
+            - 'alpine': AG Grid alpine theme
+            - 'balham': AG Grid balham theme
             - 'material': AG Grid material theme
-        Defaults to 'streamlit'.
+        Pass a StAggridTheme instance to customize a base theme with
+        .withParams()/.withParts(). Defaults to 'streamlit'.
 
     custom_css : dict, optional
         Custom CSS rules injected into the component iframe.
@@ -204,7 +228,9 @@ def AgGrid(
 
     show_toolbar : bool, optional
         Show toolbar above the grid.
-        Defaults to False.
+        Defaults to False, except when update_mode is MANUAL, where it is
+        forced to True because the manual update button lives in the toolbar
+        and would otherwise be unreachable.
 
     show_search : bool, optional
         Show search bar in toolbar.
@@ -333,13 +359,23 @@ def AgGrid(
             _shown_deprecation_warnings.add(warning_key)
 
     ##Parses Themes
-    if isinstance(theme, (str, AgGridTheme)):
-        # Legacy compatibility
-        themeObj: StAggridTheme = StAggridTheme(None)
-        themeObj["themeName"] = theme if isinstance(theme, str) else theme.value
-
-    elif isinstance(theme, StAggridTheme):
+    if isinstance(theme, StAggridTheme):
         themeObj = theme
+
+    elif isinstance(theme, AgGridTheme):
+        themeObj: StAggridTheme = StAggridTheme(None)
+        themeObj["themeName"] = theme.value
+
+    elif isinstance(theme, str):
+        # Unknown names used to fall through to AG Grid's balham theme without
+        # any warning, so validate against the themes the frontend knows.
+        if theme not in AgGridTheme:
+            raise ValueError(
+                f"{theme} is not a valid theme. Available options: "
+                f"{[t.value for t in AgGridTheme]}"
+            )
+        themeObj = StAggridTheme(None)
+        themeObj["themeName"] = theme
 
     elif theme is None:
         themeObj = StAggridTheme(None)
@@ -391,6 +427,10 @@ def AgGrid(
         update_on = list(update_on)
         if update_mode == GridUpdateMode.MANUAL:
             manual_update = True
+            # The manual update button lives inside the toolbar, so a hidden
+            # toolbar would leave a manual-update grid with no way to update.
+            if not show_toolbar:
+                show_toolbar = True
         else:
             update_on.extend(parse_update_mode(update_mode))
 
@@ -416,6 +456,15 @@ def AgGrid(
         should_grid_return = should_grid_return.js_code
         allow_unsafe_jscode = True
 
+    # These are consumed here, not by AG Grid. Pop them before the parse call
+    # or GridOptionsBuilder.from_dataframe warns that they are not valid
+    # gridOptions even though both are honored below.
+    fit_columns_on_grid_load = default_column_parameters.pop(
+        "fit_columns_on_grid_load", False
+    )
+    pro_assets = default_column_parameters.pop("pro_assets", None)
+    debug = default_column_parameters.pop("debug", False)
+
     # parse data and gridOptions
     data, gridOptions, frame_dtypes = _parse_data_and_grid_options(
         data,
@@ -425,6 +474,15 @@ def AgGrid(
         use_json_serialization,
     )
 
+    # JSON serialization hands the frame to the grid as a JSON string on
+    # gridOptions.rowData. Keep a reference to it so the response object still
+    # exposes a DataFrame instead of silently switching .data to a str.
+    json_serialized_frame = None
+    if use_json_serialization is True and data is not None:
+        gridOptions["rowData"] = data.to_json(orient="records")
+        json_serialized_frame = data
+        data = None
+
     if not isinstance(data, pd.DataFrame):
         try_to_convert_back_to_original_types = False
 
@@ -433,7 +491,7 @@ def AgGrid(
     if height is None:
         gridOptions["domLayout"] = "autoHeight"
 
-    if default_column_parameters.pop("fit_columns_on_grid_load", False):
+    if fit_columns_on_grid_load:
         warnings.warn(
             "fit_columns_on_grid_load is deprecated. Use gridOptions autoSizeStrategy instead.",
             DeprecationWarning,
@@ -497,11 +555,12 @@ def AgGrid(
 
     # Create initial response object that callbacks can safely reference
     original_data = None
-    if data is not None:
+    response_frame = data if data is not None else json_serialized_frame
+    if response_frame is not None:
         original_data = (
-            data.drop("::auto_unique_id::", axis="columns")
-            if "::auto_unique_id::" in data.columns
-            else data
+            response_frame.drop("::auto_unique_id::", axis="columns")
+            if "::auto_unique_id::" in response_frame.columns
+            else response_frame
         )
 
     response = collector.create_initial_response(
@@ -532,8 +591,6 @@ def AgGrid(
             return callback(updated_response)
     else:
         _inner_callback = None
-
-    pro_assets = default_column_parameters.pop("pro_assets", None)
 
     def _compute_data_hash(df):
         if df is None:
@@ -597,7 +654,7 @@ def AgGrid(
         custom_jscode_for_grid_return=custom_jscode_for_grid_return,
         should_grid_return=should_grid_return,
         theme=themeObj,
-        debug=default_column_parameters.pop("debug", False),
+        debug=debug,
         update_on=update_on,
         use_json_serialization=use_json_serialization,
         server_sync_strategy=server_sync_strategy,
@@ -633,23 +690,19 @@ def AgGrid(
             )
             component_value = result.grid_return if result else None
         else:
-            args = list(ex.args)
-            args[0] += (
-                ". If you're using custom JsCode objects on gridOptions, ensure that allow_unsafe_jscode is True."
+            _reraise_with_hint(
+                ex,
+                "If you're using custom JsCode objects on gridOptions, ensure that allow_unsafe_jscode is True.",
             )
-            raise type(ex)(*args)
 
     # Update the response object with final component data
     try:
         response = collector.update_response(response, component_value)
     except Exception as ex:
         # Enhanced error message for collector issues
-        args = list(ex.args)
-        args[0] += f". Error in {collector.__class__.__name__} processing."
+        hint = f"Error in {collector.__class__.__name__} processing."
         if data_return_mode == DataReturnMode.CUSTOM:
-            args[0] += (
-                " Check your custom_jscode_for_grid_return JsCode implementation."
-            )
-        raise type(ex)(*args)
+            hint += " Check your custom_jscode_for_grid_return JsCode implementation."
+        _reraise_with_hint(ex, hint)
 
     return response

@@ -63,6 +63,7 @@ def determine_collector(
         Determines which collector to use:
         - AS_INPUT, FILTERED, FILTERED_AND_SORTED: LegacyCollector
         - MINIMAL: MinimalCollector
+        - CUSTOM: CustomCollector (requires collect_grid_return)
     try_to_convert_back_to_original_types : bool
         Whether to attempt type conversion (for LegacyCollector)
     conversion_errors : str
@@ -85,7 +86,14 @@ def determine_collector(
     if data_return_mode == DataReturnMode.MINIMAL:
         # For MINIMAL mode, use MinimalCollector
         return MinimalCollector()
-    
+
+    elif data_return_mode == DataReturnMode.CUSTOM:
+        if collect_grid_return is None:
+            raise ValueError(
+                "collect_grid_return is required when using DataReturnMode.CUSTOM"
+            )
+        return CustomCollector(collect_grid_return.js_code)
+
     # For the first 3 modes (AS_INPUT, FILTERED, FILTERED_AND_SORTED), use LegacyCollector
     elif data_return_mode in (DataReturnMode.AS_INPUT, DataReturnMode.FILTERED, DataReturnMode.FILTERED_AND_SORTED):
         # Legacy support: if collect_grid_return is provided with legacy modes, use CustomCollector

@@ -115,7 +115,7 @@ Check out the full showcase with 13 interactive examples:
 
 ## AI Skills
 
-A ready-to-use Claude Code / Claude Agent SDK skill lives at [`skills/streamlit-aggrid-v2/SKILL.md`](skills/streamlit-aggrid-v2/SKILL.md). Copy that folder into your project's `.claude/skills/` (or the equivalent for your AI tool) and your copilot will know how to build grids with `GridOptionsBuilder`, wire up `JsCode` renderers, pick the right `DataReturnMode`, theme the grid, build tree-data views, and avoid common gotchas — without re-reading the whole repo every conversation.
+A ready-to-use Claude Code / Claude Agent SDK skill lives at [`skills/streamlit-aggrid-v2/SKILL.md`](skills/streamlit-aggrid-v2/SKILL.md). Copy that folder into your project's `.claude/skills/` (or the equivalent for your AI tool) and your copilot will know how to build grids with `GridOptionsBuilder`, wire up `JsCode` renderers, pick the right `DataReturnMode`, theme the grid, build tree-data views, and avoid common gotchas, without re-reading the whole repo every conversation.
 
 ## License
 

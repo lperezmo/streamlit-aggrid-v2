@@ -155,15 +155,22 @@ def walk_gridOptions(go, func):
     """
     from collections.abc import Mapping
 
-    if isinstance(go, (Mapping, list)):
-        for i, k in enumerate(go):
-            if isinstance(go[k], Mapping):
-                walk_gridOptions(go[k], func)
-            elif isinstance(go[k], list):
-                for j in go[k]:
-                    walk_gridOptions(j, func)
-            else:
-                go[k] = func(go[k])
+    # Mappings and lists need different key sets: enumerating a list yields
+    # (index, element) pairs, so indexing it by the element blows up on nested
+    # lists and skips scalar elements (leaving JsCode objects unconverted).
+    if isinstance(go, Mapping):
+        keys = list(go)
+    elif isinstance(go, list):
+        keys = range(len(go))
+    else:
+        return
+
+    for k in keys:
+        value = go[k]
+        if isinstance(value, (Mapping, list)):
+            walk_gridOptions(value, func)
+        else:
+            go[k] = func(value)
 
 
 def fetch_grid_options_from_site():
@@ -221,8 +228,10 @@ class StAggridTheme(dict):
 
         self["params"] = {}
         self["parts"] = list()
+        # themeName must always be set: the frontend theme parser falls back to
+        # balham for an undefined name, silently discarding withParams/withParts.
+        self["themeName"] = "custom"
         if base:
-            self["themeName"] = "custom"
             self.base(base)
 
     def base(self, base: Literal["quartz", "alpine", "balham", "material"]):

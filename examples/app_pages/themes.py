@@ -1,4 +1,4 @@
-"""Themes — built-in and custom AG Grid themes."""
+"""Themes: built-in and custom AG Grid themes."""
 
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, StAggridTheme
