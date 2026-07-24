@@ -228,7 +228,9 @@ def AgGrid(
 
     show_toolbar : bool, optional
         Show toolbar above the grid.
-        Defaults to False.
+        Defaults to False, except when update_mode is MANUAL, where it is
+        forced to True because the manual update button lives in the toolbar
+        and would otherwise be unreachable.
 
     show_search : bool, optional
         Show search bar in toolbar.
