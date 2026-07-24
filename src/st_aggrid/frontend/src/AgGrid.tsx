@@ -22,7 +22,7 @@ import isEqual from 'lodash/isEqual'
 import omit from 'lodash/omit'
 
 import { ThemeParser } from "./ThemeParser"
-import { CustomCollector, LegacyCollector } from "./collectors"
+import { CustomCollector, LegacyCollector, MinimalCollector } from "./collectors"
 import type { CollectorContext } from "./collectors"
 
 import "@fontsource/source-sans-pro"
@@ -188,7 +188,10 @@ class AgGrid extends React.Component<AgGridProps, State> {
     if (this.props.componentData.data_return_mode === "CUSTOM") {
       return new CustomCollector(this.collectGridReturn || (() => {}))
     }
-    // AS_INPUT, FILTERED, FILTERED_AND_SORTED, MINIMAL
+    if (this.props.componentData.data_return_mode === "MINIMAL") {
+      return new MinimalCollector()
+    }
+    // AS_INPUT, FILTERED, FILTERED_AND_SORTED
     return new LegacyCollector()
   }
 

@@ -166,6 +166,11 @@ def AgGrid(
             - AS_INPUT: Returns data as originally provided, includes edits
             - FILTERED: Returns filtered data in original order
             - FILTERED_AND_SORTED: Returns filtered and sorted data
+            - MINIMAL: Returns a MinimalResponse. The frontend sends back only
+              the displayed rows (after filter and sort) and the selected rows,
+              with no node metadata, grid state or column state, so the wire
+              payload stays small on wide or deep grids. Read it through
+              .data / .selected_rows.
             - CUSTOM: Returns CustomResponse with user-defined data structure (requires custom_jscode_for_grid_return set)
         Defaults to DataReturnMode.FILTERED_AND_SORTED.
 
