@@ -1400,7 +1400,7 @@ dev = [
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "pytest-playwright", specifier = ">=0.7.0" },
-    { name = "ruff", specifier = ">=0.16" },
+    { name = "ruff", specifier = ">=0.16,<0.17" },
     { name = "streamlit-code-editor", specifier = ">=0.1.12" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]

@@ -40,11 +40,15 @@ dev = [
     "pytest>=8.3.5",
     "pytest-playwright>=0.7.0",
     "watchdog>=6.0.0",
-    # Floor is 0.16 because the lint config now relies on that generation's
-    # default rule set (413 rules, up from 59). An older ruff would report a
-    # small subset locally and disagree with CI, which resolves this to the
-    # newest release.
-    "ruff>=0.16",
+    # Pinned to the 0.16 line because the lint config relies on that
+    # generation's default rule set (413 rules, up from 59). An older ruff
+    # reports a small subset and disagrees with CI. The upper bound matters
+    # just as much: `astral-sh/ruff-action` reads this constraint and installs
+    # the newest release satisfying it, so an unbounded floor lets the next
+    # default expansion turn CI red on unchanged code, which is exactly what
+    # 0.16.0 already did once here. Raising this is a deliberate change with
+    # its own triage pass.
+    "ruff>=0.16,<0.17",
     "streamlit-code-editor>=0.1.12",
     "pytest-cov>=6.2.1",
 ]
