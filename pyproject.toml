@@ -40,7 +40,11 @@ dev = [
     "pytest>=8.3.5",
     "pytest-playwright>=0.7.0",
     "watchdog>=6.0.0",
-    "ruff>=0.9.0",
+    # Floor is 0.16 because the lint config now relies on that generation's
+    # default rule set (413 rules, up from 59). An older ruff would report a
+    # small subset locally and disagree with CI, which resolves this to the
+    # newest release.
+    "ruff>=0.16",
     "streamlit-code-editor>=0.1.12",
     "pytest-cov>=6.2.1",
 ]
@@ -87,15 +91,35 @@ markers = [
 extend-exclude = ["development/"]
 
 [tool.ruff.lint]
-# Pinned explicitly rather than left to ruff's defaults. The dev dependency is
-# `ruff>=0.9.0` and the CI action resolves that to the newest release, so the
-# rule set was whatever the latest ruff happened to default to. Ruff 0.16.0
-# raised the default from 59 rules to 413, which turned CI red on unchanged
-# code: 143 findings on main, none of them regressions. These four codes are
-# ruff's pre-0.16 default, so this keeps the suite exactly as it was and makes
-# it independent of the installed ruff version.
-#
-# Adopting the 0.16 defaults is a reasonable thing to want, but it is a
-# separate change: it needs those 143 findings triaged rather than swept in
-# alongside unrelated work.
-select = ["E4", "E7", "E9", "F"]
+# No explicit `select`: the rule set is ruff's own default, which 0.16.0 grew
+# from 59 rules to 413. The dev dependency floor is `ruff>=0.16` so that a
+# local run and the CI run agree on what "default" means; an older ruff would
+# silently check a much smaller set and let new findings through.
+ignore = [
+    # Blind `except Exception` is the deliberate shape of this library's error
+    # boundaries, not an oversight: the component call, the collector call and
+    # the dtype round-trip all wrap arbitrary user code (JsCode, custom
+    # collectors, object-dtype frames) and either re-raise with a hint that
+    # names the likely cause or degrade to the unconverted value. Narrowing
+    # them would turn a helpful message into a raw stack trace in the user's
+    # app, or crash a grid over one uncoercible cell.
+    "BLE001",
+    # TRY004 wants TypeError where AgGrid() raises ValueError for an argument
+    # of the wrong type. Those ValueErrors are the documented, long-standing
+    # public behavior of the entry point (v1 raised them too) and user code
+    # catches them; swapping the class is an API break, not a lint fix.
+    "TRY004",
+    # PYI034 wants `__enter__` to be annotated with `typing.Self`, which is
+    # 3.11+. The package supports 3.10 and does not depend on
+    # typing_extensions, so the class name is the only annotation available.
+    "PYI034",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# N999 flags these module names as non-snake_case. They are public import
+# paths: `from st_aggrid.AgGrid import AgGrid` and
+# `from st_aggrid.AgGridReturn import AgGridReturn` are documented and used in
+# the wild, so renaming the files to satisfy a naming rule would break every
+# such import.
+"src/st_aggrid/AgGrid.py" = ["N999"]
+"src/st_aggrid/AgGridReturn.py" = ["N999"]
