@@ -148,7 +148,17 @@ def AgGrid(
 
     update_mode : GridUpdateMode, optional
         DEPRECATED. Use update_on parameter instead.
-        Defines how the grid sends results back to Streamlit.
+        Defines how the grid sends results back to Streamlit. The events it
+        implies are added on top of update_on.
+
+        GridUpdateMode.MANUAL is exclusive: the update button in the toolbar
+        becomes the only way the grid returns data, and the default update_on
+        events (cellValueChanged, selectionChanged, filterChanged,
+        sortChanged) are not attached. This matches v1 semantics. Pass
+        update_on explicitly to keep extra triggers alongside the button;
+        whatever you pass is used verbatim. show_toolbar is forced to True in
+        this mode so the button is reachable.
+
         Defaults to GridUpdateMode.NO_UPDATE.
 
     data_return_mode : DataReturnMode, optional
@@ -219,7 +229,9 @@ def AgGrid(
         Use tuple (event_name, debounce_ms) for debounced events.
 
         Example: ['cellValueChanged', ('columnResized', 500)]
-        Defaults to ['cellValueChanged', 'selectionChanged', 'filterChanged', 'sortChanged'].
+        Defaults to ['cellValueChanged', 'selectionChanged', 'filterChanged', 'sortChanged'],
+        except when update_mode is GridUpdateMode.MANUAL, where the default is
+        no events at all so the update button is the only return path.
 
     callback : callable, optional
         Function called when grid data changes. Receives AgGridReturn object.
@@ -419,6 +431,7 @@ def AgGrid(
             )
             _shown_deprecation_warnings.add(warning_key)
 
+    update_on_was_explicit = update_on is not None
     if update_on is None:
         update_on = ["cellValueChanged", "selectionChanged", "filterChanged", "sortChanged"]
 
@@ -427,6 +440,13 @@ def AgGrid(
         update_on = list(update_on)
         if update_mode == GridUpdateMode.MANUAL:
             manual_update = True
+            # MANUAL is exclusive: the update button is the only return path.
+            # The default event list would otherwise keep sending data back on
+            # every edit, selection, filter and sort, which defeats the mode.
+            # An explicit update_on is honored, so callers who want extra
+            # triggers alongside the button can still ask for them.
+            if not update_on_was_explicit:
+                update_on = []
             # The manual update button lives inside the toolbar, so a hidden
             # toolbar would leave a manual-update grid with no way to update.
             if not show_toolbar:
