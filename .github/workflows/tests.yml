@@ -60,7 +60,11 @@ jobs:
             uv pip install -U streamlit
           fi
       - run: uv run --no-sync python -c "import streamlit; print('streamlit', streamlit.__version__)"
-      - run: uv run --no-sync pytest test/test_registration_smoke.py -v
+      # Everything that does not need a browser, selected by marker so a new
+      # test file is picked up without editing this workflow. Running it on
+      # every Streamlit version is deliberate: the Python layer is where API
+      # drift bites, and these tests are fast.
+      - run: uv run --no-sync pytest test/ -m "not browser" -v
 
   e2e:
     name: CCv2 e2e (Playwright)
@@ -94,7 +98,7 @@ jobs:
         run: uv run playwright install --with-deps chromium
 
       - name: Run e2e tests
-        run: uv run pytest test/test_ccv2_e2e.py -v
+        run: uv run pytest test/ -m browser -v
 
       - name: Upload Playwright test artifacts on failure
         if: failure()

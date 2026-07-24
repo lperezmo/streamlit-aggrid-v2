@@ -73,6 +73,16 @@ version_toml = [
 tag_format = "v{version}"
 commit_message = "chore(release): v{version}"
 
+[tool.pytest.ini_options]
+# CI selects suites by marker, not by filename. Listing files in the workflow
+# is how five e2e files and roughly fifty browser-less tests ended up never
+# running: each was added in a commit that did not touch tests.yml, so it was
+# dropped by omission and nobody noticed. With markers, a new test file joins
+# the right CI job by default and silence means "no tests", not "not wired up".
+markers = [
+    "browser: needs a real browser and a running Streamlit server (Playwright)",
+]
+
 [tool.ruff]
 extend-exclude = ["development/"]
 

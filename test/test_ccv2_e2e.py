@@ -15,6 +15,9 @@ from playwright.sync_api import Page, expect
 from e2e_utils import StreamlitRunner
 
 
+# Selects this file into the e2e CI job and out of the browser-less one.
+pytestmark = pytest.mark.browser
+
 ROOT_DIRECTORY = Path(__file__).parent.parent.absolute()
 FIXTURE_APP = ROOT_DIRECTORY / "test" / "ccv2_e2e_app.py"
 

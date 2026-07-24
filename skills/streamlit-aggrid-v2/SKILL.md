@@ -110,7 +110,8 @@ Modes:
 - `AS_INPUT` (default): data unchanged
 - `FILTERED`: only filtered rows
 - `FILTERED_AND_SORTED`: filtered + user-sorted order
-- `MINIMAL`: just selection + grid_state, no full data (fast for big grids)
+- `MINIMAL`: rows and selection only, without the grid/column state and other
+  legacy metadata (a much smaller payload, so it is the fast one for big grids)
 - `CUSTOM`: run user JsCode to compute the return
 
 ## Update triggers: when the Streamlit rerun fires
