@@ -64,9 +64,18 @@ def _reraise_with_hint(ex: Exception, hint: str):
     Rebuilding the exception with ``type(ex)(*ex.args)`` breaks for any
     exception whose constructor does not take its own args back (for example
     StreamlitDuplicateElementId or json.JSONDecodeError) and blows up on
-    exceptions with empty args, destroying the original error.
+    exceptions with empty args, destroying the original error. Mutating
+    ``args`` in place skips the constructor entirely, so the type and the
+    traceback both survive.
+
+    The hint has to land in ``str(ex)`` to do any good: Streamlit renders the
+    exception message and the formatted traceback, and neither one includes
+    ``__notes__``, so a note on its own is visible only in the server console.
     """
     add_note = getattr(ex, "add_note", None)
+    if ex.args and isinstance(ex.args[0], str):
+        ex.args = (f"{ex.args[0]}. {hint}", *ex.args[1:])
+        raise ex
     if add_note is not None:
         add_note(hint)
         raise ex
