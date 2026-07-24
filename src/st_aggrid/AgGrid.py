@@ -483,7 +483,15 @@ def AgGrid(
         json_serialized_frame = data
         data = None
 
-    if not isinstance(data, pd.DataFrame):
+    # The frame that was actually handed to the grid, whichever serialization
+    # path was taken. Everything downstream that reasons about "the data" (dtype
+    # round-tripping, the change-detection hash, the response object) has to go
+    # through this: under use_json_serialization=True the frame lives in
+    # gridOptions["rowData"] and ``data`` is None, and testing ``data`` alone
+    # silently degraded both the dtypes and the hash.
+    sent_frame = data if data is not None else json_serialized_frame
+
+    if not isinstance(sent_frame, pd.DataFrame):
         try_to_convert_back_to_original_types = False
 
     custom_css = custom_css or dict()
@@ -555,12 +563,11 @@ def AgGrid(
 
     # Create initial response object that callbacks can safely reference
     original_data = None
-    response_frame = data if data is not None else json_serialized_frame
-    if response_frame is not None:
+    if sent_frame is not None:
         original_data = (
-            response_frame.drop("::auto_unique_id::", axis="columns")
-            if "::auto_unique_id::" in response_frame.columns
-            else response_frame
+            sent_frame.drop("::auto_unique_id::", axis="columns")
+            if "::auto_unique_id::" in sent_frame.columns
+            else sent_frame
         )
 
     response = collector.create_initial_response(
@@ -622,7 +629,11 @@ def AgGrid(
                 )
                 return str(hash(df.to_string()))
 
-    data_hash = _compute_data_hash(data)
+    # Hash the frame that is actually on the wire, not the ``data`` local: the
+    # frontend refreshes rows only when data_hash changes, so hashing None under
+    # use_json_serialization=True pinned the hash at "" and froze the grid on
+    # whatever rows it mounted with.
+    data_hash = _compute_data_hash(sent_frame)
 
     # In CCv2, all data goes through JSON via the `data=` parameter.
     # Convert DataFrame to records for JSON serialization. Missing values
