@@ -101,10 +101,14 @@ def _parse_data_and_grid_options(
             data = data.to_pandas(use_pyarrow_extension_array=False)
 
         if isinstance(data, pd.DataFrame):
-            # converts date columns to iso format:
+            # converts date columns to iso format. Missing values must stay
+            # empty: pd.NaT.isoformat() returns the string "NaT", which would
+            # be rendered literally in cells, quick search and CSV export.
             for c, d in data.dtypes.items():
                 if d.kind == "M":
-                    data[c] = data[c].apply(lambda s: s.isoformat())
+                    data[c] = data[c].apply(
+                        lambda s: None if pd.isna(s) else s.isoformat()
+                    )
 
         # if there is data and no grid options, create grid options from the data
         if not grid_options:
@@ -135,9 +139,9 @@ def _parse_data_and_grid_options(
             map(str, range(data.shape[0]))
         )  ##pd.util.hash_pandas_object(data).astype(str)
 
-    if use_json_serialization is True and data is not None:
-        grid_options["rowData"] = data.to_json(orient="records")
-        data = None
+    # NOTE: when use_json_serialization is True the frame is moved into
+    # grid_options["rowData"] by the caller (AgGrid), which keeps a reference to
+    # it so the response object can still expose a DataFrame.
 
     # process the JsCode Objects
     if unsafe_allow_jscode:

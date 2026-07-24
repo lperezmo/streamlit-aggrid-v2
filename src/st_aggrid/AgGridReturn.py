@@ -124,8 +124,11 @@ class AgGridReturn(Mapping):
                 )
             elif dtype_kind == "f":  # Float
                 converted_columns.append(
-                    pd.to_numeric(column, errors=self._conversion_errors).astype(
-                        original_dtype, copy=False
+                    self._convert_with_error_policy(
+                        column,
+                        lambda col, errors: pd.to_numeric(
+                            col, errors=errors
+                        ).astype(original_dtype, copy=False),
                     )
                 )
             elif dtype_kind in ("O", "S", "U"):  # Object/String/Unicode
@@ -134,8 +137,11 @@ class AgGridReturn(Mapping):
                 )
             elif dtype_kind == "M":  # Datetime
                 converted_columns.append(
-                    pd.to_datetime(column, errors=self._conversion_errors).astype(
-                        original_dtype, copy=False
+                    self._convert_with_error_policy(
+                        column,
+                        lambda col, errors: pd.to_datetime(
+                            col, errors=errors
+                        ).astype(original_dtype, copy=False),
                     )
                 )
             elif dtype_kind == "m":  # Timedelta
@@ -147,7 +153,26 @@ class AgGridReturn(Mapping):
                     column.astype(original_dtype)
                 )
 
+        # A grid that returned zero nodes yields a zero-column frame, and
+        # pd.concat([]) raises "No objects to concatenate".
+        if not converted_columns:
+            return data
+
         return pd.concat(converted_columns, axis=1, copy=False)
+
+    def _convert_with_error_policy(self, column, converter):
+        """Run ``converter(column, errors)`` honoring conversion_errors.
+
+        pandas deprecated ``errors='ignore'`` and removes it in pandas 3.0, so
+        the documented behavior (return the input unchanged when conversion
+        fails) is implemented here instead of being forwarded to pandas.
+        """
+        if self._conversion_errors == "ignore":
+            try:
+                return converter(column, "raise")
+            except Exception:
+                return column
+        return converter(column, self._conversion_errors)
 
     def _convert_to_integer(self, column):
         """Convert column to Int64, falling back to Float64 on errors.
@@ -534,16 +559,14 @@ class AgGridReturn(Mapping):
         return len(self._public_attribute_names())
 
     def keys(self):
-        """Return all available keys (attributes + grid_response keys)."""
-        attr_keys = self._public_attribute_names()
+        """Return the keys this Mapping iterates over.
 
-        # Get grid_response keys for backward compatibility
-        grid_response = self.__dict__.get("grid_response", {})
-        if isinstance(grid_response, dict):
-            grid_keys = [k for k in grid_response.keys() if k not in attr_keys]
-            return attr_keys + grid_keys
-
-        return attr_keys
+        __iter__/__len__ and keys() must agree: keys() used to append the raw
+        grid_response keys, so len(r) disagreed with len(r.keys()) and
+        dict(zip(r.keys(), r.values())) silently dropped the extras. Raw
+        response keys remain reachable through __getitem__ and .grid_response.
+        """
+        return self._public_attribute_names()
 
     def values(self):
         """Return all values for public attributes."""
