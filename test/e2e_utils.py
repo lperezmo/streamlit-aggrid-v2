@@ -11,7 +11,7 @@ from tempfile import TemporaryFile
 
 import requests
 
-LOGGER = logging.getLogger(__file__)
+LOGGER = logging.getLogger(__name__)
 
 
 def _find_free_port():
@@ -75,7 +75,11 @@ class AsyncSubprocess:
         # file. We do this instead of using subprocess.PIPE (which causes the
         # Popen object to capture the output to its own internal buffer),
         # because large amounts of output can cause it to deadlock.
-        self._stdout_file = TemporaryFile("w+")
+        #
+        # SIM115 cannot apply: the file has to outlive start() so the child can
+        # keep writing to it. This class is itself the context manager that owns
+        # it, and both stop() and terminate() close it.
+        self._stdout_file = TemporaryFile("w+")  # noqa: SIM115
         LOGGER.info("Running command: %s", shlex.join(self.args))
         self._proc = subprocess.Popen(
             self.args,
