@@ -1,7 +1,9 @@
 """Data return modes: control what data comes back to Python."""
 
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode
+
+from st_aggrid import AgGrid, DataReturnMode, GridOptionsBuilder
+
 from utils.data import get_sample_data
 
 df = get_sample_data()

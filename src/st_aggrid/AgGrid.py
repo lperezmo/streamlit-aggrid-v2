@@ -1,30 +1,31 @@
-import streamlit as st
-import pandas as pd
-import warnings
-import typing
 import logging
+import typing
+import warnings
+from typing import Literal
+
+import pandas as pd
+import streamlit as st
 from decouple import config
-from typing import Union, Literal
 
 try:
     import pyarrow.lib
 except ImportError:
     pyarrow = None
 from st_aggrid import _compat
-from st_aggrid.shared import (
-    GridUpdateMode,
-    DataReturnMode,
-    ColumnsAutoSizeMode,
-    JsCode,
-    StAggridTheme,
-    AgGridTheme,
-)
 from st_aggrid.aggrid_utils import (
-    parse_update_mode,
     _parse_data_and_grid_options,
     _sanitize_nan_inf,
+    parse_update_mode,
 )
 from st_aggrid.AgGridReturn import AgGridReturn
+from st_aggrid.shared import (
+    AgGridTheme,
+    ColumnsAutoSizeMode,
+    DataReturnMode,
+    GridUpdateMode,
+    JsCode,
+    StAggridTheme,
+)
 
 # Track shown deprecation warnings to avoid repetition in Streamlit
 _shown_deprecation_warnings = set()
@@ -55,7 +56,6 @@ def _get_component_func():
 
 def _on_grid_return_change():
     """Callback for when the grid return state changes in the frontend."""
-    pass
 
 
 def _reraise_with_hint(ex: Exception, hint: str):
@@ -83,8 +83,8 @@ def _reraise_with_hint(ex: Exception, hint: str):
 
 
 def AgGrid(
-    data: Union[pd.DataFrame, str] = None,
-    gridOptions: typing.Dict = None,
+    data: pd.DataFrame | str = None,
+    gridOptions: dict = None,
     height: int = 400,
     update_mode: GridUpdateMode
     | Literal[
@@ -609,7 +609,7 @@ def AgGrid(
         # This allows the table to keep its state up to date (eg #176)
         def _inner_callback():
             session_value = st.session_state.get(key)
-            _ = session_value.grid_return if session_value else None  # noqa: F841
+            _ = session_value.grid_return if session_value else None
 
     elif callback and key:
         # User defined callback

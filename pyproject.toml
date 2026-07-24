@@ -115,6 +115,13 @@ ignore = [
     "PYI034",
 ]
 
+[tool.ruff.lint.isort]
+# `utils` (examples), `e2e_utils` and `grid_stub` (tests) are sibling modules
+# imported by path, not installed packages. Without this they sort into the
+# third-party block, above st_aggrid itself, which reads as if the example
+# apps were importing the library from somewhere else.
+known-local-folder = ["e2e_utils", "grid_stub", "utils"]
+
 [tool.ruff.lint.per-file-ignores]
 # N999 flags these module names as non-snake_case. They are public import
 # paths: `from st_aggrid.AgGrid import AgGrid` and

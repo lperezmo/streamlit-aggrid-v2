@@ -1,9 +1,11 @@
 """Enterprise Features: row grouping, pivot, status bar, side bar, and more."""
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder
+
 from utils.data import get_sample_data
 
 df = get_sample_data()

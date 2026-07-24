@@ -2,7 +2,8 @@
 Custom collector for handling user-provided JsCode responses
 """
 
-from typing import Any, Dict
+from typing import Any
+
 from .base import BaseCollector
 
 
@@ -126,7 +127,7 @@ class CustomCollector(BaseCollector):
         """
         self.js_code = js_code
     
-    def create_initial_response(self, original_data: Any, grid_options: Dict, **kwargs) -> CustomResponse:
+    def create_initial_response(self, original_data: Any, grid_options: dict, **kwargs) -> CustomResponse:
         """
         Create an initial CustomResponse object that can be safely referenced by callbacks
         """
@@ -142,7 +143,7 @@ class CustomCollector(BaseCollector):
         # since the component_value contains the processed custom data
         return CustomResponse(component_value)
     
-    def process_response(self, component_value: Any, original_data: Any, grid_options: Dict) -> CustomResponse:
+    def process_response(self, component_value: Any, original_data: Any, grid_options: dict) -> CustomResponse:
         """
         Process response by returning the raw component value wrapped in CustomResponse
         

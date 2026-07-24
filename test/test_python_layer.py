@@ -12,8 +12,8 @@ import pandas as pd
 import pytest
 
 from st_aggrid.AgGrid import _reraise_with_hint
-from st_aggrid.AgGridReturn import AgGridReturn
 from st_aggrid.aggrid_utils import _parse_data_and_grid_options, _sanitize_nan_inf
+from st_aggrid.AgGridReturn import AgGridReturn
 from st_aggrid.collectors.custom import CustomCollector
 from st_aggrid.collectors.factory import determine_collector
 from st_aggrid.grid_options_builder import GridOptionsBuilder
@@ -23,7 +23,6 @@ from st_aggrid.shared import (
     StAggridTheme,
     walk_gridOptions,
 )
-
 
 DF = pd.DataFrame({"a": [1, 2], "b": ["x", "y"]})
 GRID_OPTIONS = {"columnDefs": [{"field": "a"}, {"field": "b"}]}

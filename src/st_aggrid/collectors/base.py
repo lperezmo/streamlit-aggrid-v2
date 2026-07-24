@@ -3,14 +3,14 @@ Base collector abstract class for AgGrid response processing
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 
 class BaseCollector(ABC):
     """Abstract base class for AgGrid response collectors"""
     
     @abstractmethod
-    def create_initial_response(self, original_data: Any, grid_options: Dict, **kwargs) -> Any:
+    def create_initial_response(self, original_data: Any, grid_options: dict, **kwargs) -> Any:
         """
         Create an initial response object that can be safely referenced by callbacks
         before component execution completes.
@@ -29,7 +29,6 @@ class BaseCollector(ABC):
         Any
             Initial response object in the appropriate format for this collector
         """
-        pass
     
     @abstractmethod
     def update_response(self, response: Any, component_value: Any) -> Any:
@@ -48,10 +47,9 @@ class BaseCollector(ABC):
         Any
             Updated response object with component data
         """
-        pass
     
     @abstractmethod
-    def process_response(self, component_value: Any, original_data: Any, grid_options: Dict) -> Any:
+    def process_response(self, component_value: Any, original_data: Any, grid_options: dict) -> Any:
         """
         Process the component response and return appropriate data structure
         
@@ -72,7 +70,6 @@ class BaseCollector(ABC):
         Any
             Processed response in the appropriate format for this collector
         """
-        pass
     
     @abstractmethod
     def get_return_type(self) -> str:
@@ -84,7 +81,6 @@ class BaseCollector(ABC):
         str
             String description of the return type
         """
-        pass
     
     def validate_response(self, response: Any) -> bool:
         """

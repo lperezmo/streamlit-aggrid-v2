@@ -1,7 +1,8 @@
-from enum import Enum, IntEnum, Flag, auto, EnumMeta
 import json
 import pathlib
-from typing import List, Literal, Mapping, Optional, TypedDict
+from collections.abc import Mapping
+from enum import Enum, EnumMeta, Flag, IntEnum, auto
+from typing import Literal, TypedDict
 
 DEFAULT_COLUMN_PROPS = [
     "cellDataType",
@@ -175,6 +176,7 @@ def walk_gridOptions(go, func):
 
 def fetch_grid_options_from_site():
     import itertools
+
     import requests
     from bs4 import BeautifulSoup
 
@@ -218,12 +220,12 @@ class StAggridThemeType(TypedDict, total=False):
     themeName: str
     base: Literal["quartz", "alpine", "balham", "material"]
     params: Mapping[str, str | int]
-    parts: List[str]
+    parts: list[str]
 
 
 # suclassing a dict because it is JSON serializable.
 class StAggridTheme(dict):
-    def __init__(self, base: Optional[Literal["quartz", "alpine", "balham", "material"]] = None):
+    def __init__(self, base: Literal["quartz", "alpine", "balham", "material"] | None = None):
         super()
 
         self["params"] = {}
@@ -241,6 +243,6 @@ class StAggridTheme(dict):
         self["params"].update(params)
         return self
 
-    def withParts(self, *parts: List[str]):
+    def withParts(self, *parts: list[str]):
         self["parts"] = list(set(self["parts"]).union(set(parts)))
         return self

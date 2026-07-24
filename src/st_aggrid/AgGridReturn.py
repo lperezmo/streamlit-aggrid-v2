@@ -1,11 +1,12 @@
-from typing import Mapping
-from st_aggrid.shared import DataReturnMode
-
+import inspect
 import json
 import logging
-import pandas as pd
-import inspect
 import warnings
+from collections.abc import Mapping
+
+import pandas as pd
+
+from st_aggrid.shared import DataReturnMode
 
 
 class AgGridReturn(Mapping):
@@ -277,8 +278,7 @@ class AgGridReturn(Mapping):
             return ()
 
         # Remove ROOT_NODE_ID prefix if present
-        if parent_path.startswith("ROOT_NODE_ID."):
-            parent_path = parent_path[13:]  # len("ROOT_NODE_ID.") = 13
+        parent_path = parent_path.removeprefix("ROOT_NODE_ID.")
 
         # Split by dots to get each level
         parts = parent_path.split(".")

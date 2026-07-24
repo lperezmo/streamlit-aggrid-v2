@@ -1,7 +1,9 @@
 """Inline Buttons: Delete/Undo toggle pattern with sentinel column."""
 
 import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+
 from utils.data import get_sample_data
 
 df = get_sample_data().copy()

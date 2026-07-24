@@ -12,7 +12,6 @@ import streamlit as st
 
 from st_aggrid import AgGrid, JsCode
 
-
 st.title("CCv2 ported legacy coverage")
 
 # 1) DataReturnMode.CUSTOM. The user's JsCode runs inside the grid and its

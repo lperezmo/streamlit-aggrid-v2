@@ -18,7 +18,6 @@ import pytest
 
 from grid_stub import nodes_payload, render_grid
 
-
 DF = pd.DataFrame({"ints": [1, 2, 3], "floats": [1.5, 2.5, 3.5]})
 
 # What the browser sends back for DF: AG Grid hands values to Python as the

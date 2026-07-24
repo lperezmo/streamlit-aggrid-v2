@@ -25,7 +25,6 @@ from typing import Any
 
 from st_aggrid import AgGrid
 
-
 # ``st_aggrid.AgGrid`` is both a module and (after the package __init__ runs)
 # an attribute holding the function, so plain attribute access would hand back
 # the function. Go through the module registry to get the module itself.

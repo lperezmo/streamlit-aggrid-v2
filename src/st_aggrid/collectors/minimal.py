@@ -2,7 +2,8 @@
 Minimal collector for lightweight AgGrid responses
 """
 
-from typing import Any, Dict
+from typing import Any
+
 from .base import BaseCollector
 
 
@@ -83,9 +84,8 @@ class MinimalCollector(BaseCollector):
     
     def __init__(self):
         """Initialize the minimal collector"""
-        pass
     
-    def create_initial_response(self, original_data: Any, grid_options: Dict, **kwargs) -> MinimalResponse:
+    def create_initial_response(self, original_data: Any, grid_options: dict, **kwargs) -> MinimalResponse:
         """
         Create an initial MinimalResponse object that can be safely referenced by callbacks
         """
@@ -99,7 +99,7 @@ class MinimalCollector(BaseCollector):
             response._component_value = component_value
         return response
     
-    def process_response(self, component_value: Any, original_data: Any, grid_options: Dict) -> MinimalResponse:
+    def process_response(self, component_value: Any, original_data: Any, grid_options: dict) -> MinimalResponse:
         """
         Process response with minimal overhead - just wrap the raw component value
         """

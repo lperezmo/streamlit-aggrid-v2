@@ -1,13 +1,14 @@
-import os
 import json
 import math
-import pandas as pd
-
-from typing import Mapping
-from st_aggrid.grid_options_builder import GridOptionsBuilder
-from st_aggrid.shared import JsCode, walk_gridOptions, GridUpdateMode
+import os
+from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
+
+import pandas as pd
+
+from st_aggrid.grid_options_builder import GridOptionsBuilder
+from st_aggrid.shared import GridUpdateMode, JsCode, walk_gridOptions
 
 
 def _sanitize_nan_inf(obj):

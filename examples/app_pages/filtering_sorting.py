@@ -1,7 +1,9 @@
 """Filtering & sorting: column filters and sort indicators."""
 
 import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder
+
 from utils.data import get_sample_data
 
 df = get_sample_data()

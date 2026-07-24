@@ -53,7 +53,6 @@ import pytest
 
 from grid_stub import render_grid
 
-
 GRID_OPTIONS = {"columnDefs": [{"field": "a"}, {"field": "b"}]}
 RECORDS = [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]
 

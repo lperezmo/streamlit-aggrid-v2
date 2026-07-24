@@ -2,15 +2,14 @@
 Factory functions for creating and validating AgGrid collectors
 """
 
-from typing import Optional
-from .base import BaseCollector
-from .legacy import LegacyCollector
-from .custom import CustomCollector
-from .minimal import MinimalCollector
 from ..shared import DataReturnMode, JsCode
+from .base import BaseCollector
+from .custom import CustomCollector
+from .legacy import LegacyCollector
+from .minimal import MinimalCollector
 
 
-def validate_collector_params(collect_grid_return: Optional[JsCode], should_grid_return: Optional[JsCode]) -> None:
+def validate_collector_params(collect_grid_return: JsCode | None, should_grid_return: JsCode | None) -> None:
     """
     Validate collector parameters before creating collectors
     
@@ -42,8 +41,8 @@ def validate_collector_params(collect_grid_return: Optional[JsCode], should_grid
 
 
 def determine_collector(
-    collect_grid_return: Optional[JsCode] = None,
-    should_grid_return: Optional[JsCode] = None,
+    collect_grid_return: JsCode | None = None,
+    should_grid_return: JsCode | None = None,
     data_return_mode: DataReturnMode = DataReturnMode.AS_INPUT,
     try_to_convert_back_to_original_types: bool = True,
     conversion_errors: str = "coerce"

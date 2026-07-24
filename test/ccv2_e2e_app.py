@@ -15,7 +15,6 @@ import streamlit as st
 
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
 
-
 st.title("CCv2 e2e tests")
 
 # 1) DataFrame

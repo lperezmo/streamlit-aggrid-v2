@@ -1,7 +1,9 @@
 """Basic grid: render a DataFrame with zero configuration."""
 
 import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder
+
 from utils.data import get_sample_data
 
 df = get_sample_data()
