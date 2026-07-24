@@ -1,4 +1,4 @@
-"""st-aggrid example app — basic grid with editing and selection."""
+"""st-aggrid example app: basic grid with editing and selection."""
 
 import streamlit as st
 import pandas as pd

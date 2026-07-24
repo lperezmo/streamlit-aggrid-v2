@@ -1,4 +1,4 @@
-"""Row selection — single and multi-row selection with checkboxes."""
+"""Row selection: single and multi-row selection with checkboxes."""
 
 import streamlit as st
 import pandas as pd

@@ -1,4 +1,4 @@
-"""Filtering & sorting — column filters and sort indicators."""
+"""Filtering & sorting: column filters and sort indicators."""
 
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder

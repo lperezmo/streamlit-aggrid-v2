@@ -1,4 +1,4 @@
-"""Cell editing — edit cells inline and get changes back in Python."""
+"""Cell editing: edit cells inline and get changes back in Python."""
 
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode

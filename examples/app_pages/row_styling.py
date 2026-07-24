@@ -1,4 +1,4 @@
-"""Row Styling — conditional row and cell coloring."""
+"""Row Styling: conditional row and cell coloring."""
 
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
@@ -36,7 +36,7 @@ grid_options = gb.build()
 # -- Style definitions (dark/light mode friendly with rgba) --------------------
 
 if style_mode == "Row class rules" or style_mode == "All combined":
-    # rowClassRules use expression strings — `data` is available as shorthand
+    # rowClassRules use expression strings where `data` is available as shorthand
     grid_options["rowClassRules"] = {
         "high-performer": "data.Rating >= 4.5",
         "low-performer": "data.Rating < 3.8",
@@ -125,7 +125,7 @@ with st.expander("Code", icon=":material/code:"):
 gb = GridOptionsBuilder.from_dataframe(df)
 grid_options = gb.build()
 
-# Row class rules — expression strings (data.Field shorthand)
+# Row class rules: expression strings (data.Field shorthand)
 grid_options["rowClassRules"] = {
     "high-performer": "data.Rating >= 4.5",
     "low-performer": "data.Rating < 3.8",
@@ -137,7 +137,7 @@ custom_css = {
     },
 }
 
-# getRowStyle — JS callback returning style object
+# getRowStyle: JS callback returning style object
 grid_options["getRowStyle"] = JsCode("""
 function(params) {
     if (params.data.Years >= 10) {
@@ -147,7 +147,7 @@ function(params) {
 }
 """).js_code
 
-# cellStyle — per-column JS callback
+# cellStyle: per-column JS callback
 gb.configure_column("Salary", cellStyle=JsCode("""
 function(params) {
     if (params.value >= 150000) return { color: '#22c55e', fontWeight: 'bold' };

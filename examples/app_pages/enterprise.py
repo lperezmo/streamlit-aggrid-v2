@@ -1,4 +1,4 @@
-"""Enterprise Features — row grouping, pivot, status bar, side bar, and more."""
+"""Enterprise Features: row grouping, pivot, status bar, side bar, and more."""
 
 import pandas as pd
 import numpy as np

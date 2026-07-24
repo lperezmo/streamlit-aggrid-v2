@@ -30,7 +30,7 @@ AgGrid(df)
 
 That's it. Renders an interactive table with sorting, column resize, and filter UI.
 
-## GridOptionsBuilder — the fluent configurator
+## GridOptionsBuilder: the fluent configurator
 
 Use this for common configuration. Build once, pass to `AgGrid`.
 
@@ -50,16 +50,16 @@ filtered = response.data
 ```
 
 Useful methods:
-- `configure_default_column(**kwargs)` — applies to every column
-- `configure_column(name, **kwargs)` — override a single column
+- `configure_default_column(**kwargs)`: applies to every column
+- `configure_column(name, **kwargs)`: override a single column
 - `configure_selection(selection_mode="multiple", use_checkbox=True, pre_selected_rows=[0, 2])`
 - `configure_pagination(enabled=True, paginationAutoPageSize=True)`
 - `configure_side_bar(filters_panel=True, columns_panel=True)` (enterprise)
-- `build()` — returns a plain dict you can further edit (e.g. `grid_options["pivotMode"] = True`)
+- `build()`: returns a plain dict you can further edit (e.g. `grid_options["pivotMode"] = True`)
 
 Anything not covered by the builder: edit the dict directly before passing.
 
-## JsCode — inject JavaScript safely
+## JsCode: inject JavaScript safely
 
 `JsCode` wraps JS strings so they survive JSON transport. Need `allow_unsafe_jscode=True` on `AgGrid`.
 
@@ -92,9 +92,9 @@ gb.configure_column("action", cellRenderer=btn)
 ## Data return modes
 
 The response object from `AgGrid()` contains:
-- `.data` — a DataFrame after filtering/sorting/editing (depends on mode)
-- `.selected_rows` — selected row DataFrame
-- `.grid_state` — full grid state dict (column order, sorts, filters, etc.)
+- `.data`: a DataFrame after filtering/sorting/editing (depends on mode)
+- `.selected_rows`: selected row DataFrame
+- `.grid_state`: full grid state dict (column order, sorts, filters, etc.)
 
 ```python
 from st_aggrid import DataReturnMode
@@ -107,13 +107,13 @@ response = AgGrid(
 ```
 
 Modes:
-- `AS_INPUT` (default) — data unchanged
-- `FILTERED` — only filtered rows
-- `FILTERED_AND_SORTED` — filtered + user-sorted order
-- `MINIMAL` — just selection + grid_state, no full data (fast for big grids)
-- `CUSTOM` — run user JsCode to compute the return
+- `AS_INPUT` (default): data unchanged
+- `FILTERED`: only filtered rows
+- `FILTERED_AND_SORTED`: filtered + user-sorted order
+- `MINIMAL`: just selection + grid_state, no full data (fast for big grids)
+- `CUSTOM`: run user JsCode to compute the return
 
-## Update triggers — when the Streamlit rerun fires
+## Update triggers: when the Streamlit rerun fires
 
 ```python
 from st_aggrid import GridUpdateMode
@@ -192,9 +192,9 @@ AgGrid(
 
 ## Enterprise flag
 
-- `enable_enterprise_modules=True` — all enterprise features + watermark (no license).
-- `enable_enterprise_modules="enterprise+AgCharts"` — include AG Charts (needed for sparklines).
-- `enable_enterprise_modules=False` (default) — community only.
+- `enable_enterprise_modules=True`: all enterprise features + watermark (no license).
+- `enable_enterprise_modules="enterprise+AgCharts"`: include AG Charts (needed for sparklines).
+- `enable_enterprise_modules=False` (default): community only.
 
 To remove the watermark, pass `license_key="..."` alongside `enable_enterprise_modules=True`.
 
@@ -227,17 +227,17 @@ AgGrid(other_df, key="orders_grid")
 
 ## Common gotchas
 
-1. **`JsCode` without `allow_unsafe_jscode=True`** — the JS string is passed literally as a string, not executed. Always pair them.
-2. **NaN in numeric `gridOptions` fields** (e.g. `width=df[col].str.len().max()` on an empty column) — sanitized automatically by the Python side before CCv2 transport. Use pandas numeric guards upstream if you want a fallback value rather than auto-null.
-3. **Enterprise watermark** — shown unless `license_key` is set. Harmless in dev.
-4. **`getRowId`** — if not set, rows use positional row numbers. For stable selection across reruns with changing data, set a `getRowId`:
+1. **`JsCode` without `allow_unsafe_jscode=True`**: the JS string is passed literally as a string, not executed. Always pair them.
+2. **NaN in numeric `gridOptions` fields** (e.g. `width=df[col].str.len().max()` on an empty column): sanitized automatically by the Python side before CCv2 transport. Use pandas numeric guards upstream if you want a fallback value rather than auto-null.
+3. **Enterprise watermark**: shown unless `license_key` is set. Harmless in dev.
+4. **`getRowId`**: if not set, rows use positional row numbers. For stable selection across reruns with changing data, set a `getRowId`:
    ```python
    grid_options["getRowId"] = JsCode("function(p) { return p.data.id; }")
    ```
-5. **Tree data needs `allow_unsafe_jscode=True`** — `getDataPath` is a JS function.
-6. **Multiple grids on one page** — always pass distinct `key=` values.
-7. **Editing in place** — `gb.configure_default_column(editable=True)` or per-column `editable=True`. Edited values come back via `response.data` when `update_mode` includes `VALUE_CHANGED`.
-8. **Polars DataFrames work** — converted to pandas internally with no extra dep.
+5. **Tree data needs `allow_unsafe_jscode=True`**: `getDataPath` is a JS function.
+6. **Multiple grids on one page**: always pass distinct `key=` values.
+7. **Editing in place**: `gb.configure_default_column(editable=True)` or per-column `editable=True`. Edited values come back via `response.data` when `update_mode` includes `VALUE_CHANGED`.
+8. **Polars DataFrames work**: converted to pandas internally with no extra dep.
 
 ## Minimum viable reference
 

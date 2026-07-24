@@ -1,4 +1,4 @@
-"""Basic grid — render a DataFrame with zero configuration."""
+"""Basic grid: render a DataFrame with zero configuration."""
 
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder
@@ -8,12 +8,12 @@ df = get_sample_data()
 
 st.markdown(
     "Drop a DataFrame into `AgGrid()` and get an interactive grid with sorting, "
-    "resizing, and filtering — no configuration needed."
+    "resizing, and filtering, with no configuration needed."
 )
 
 # -- Minimal example ---------------------------------------------------------
 with st.container(border=True):
-    st.caption("Minimal — just pass a DataFrame")
+    st.caption("Minimal: just pass a DataFrame")
     AgGrid(df, key="basic_minimal", height=350)
 
 st.space("medium")

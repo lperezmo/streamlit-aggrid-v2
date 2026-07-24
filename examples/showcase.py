@@ -126,7 +126,7 @@ with st.sidebar:
     st.markdown(
         "**st-aggrid** brings [AG Grid](https://www.ag-grid.com/)'s "
         "enterprise-grade data grid to Streamlit via the new "
-        "Components v2 API — no iframes, native theming."
+        "Components v2 API: no iframes, native theming."
     )
     st.caption(
         "Based on [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggrid) "

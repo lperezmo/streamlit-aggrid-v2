@@ -1,4 +1,4 @@
-"""What's new in AG Grid v35 — highlights and runnable examples."""
+"""What's new in AG Grid v35: highlights and runnable examples."""
 
 import pandas as pd
 import streamlit as st
