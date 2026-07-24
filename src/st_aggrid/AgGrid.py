@@ -27,6 +27,11 @@ from st_aggrid.shared import (
     StAggridTheme,
 )
 
+# A library must not log through the root logger: root calls install a handler
+# on first use and the record carries no module name, so the message shows up
+# unattributed in the host app's console and cannot be silenced per package.
+_LOGGER = logging.getLogger(__name__)
+
 # Track shown deprecation warnings to avoid repetition in Streamlit
 _shown_deprecation_warnings = set()
 
@@ -83,8 +88,8 @@ def _reraise_with_hint(ex: Exception, hint: str):
 
 
 def AgGrid(
-    data: pd.DataFrame | str = None,
-    gridOptions: dict = None,
+    data: pd.DataFrame | str | None = None,
+    gridOptions: dict | None = None,
     height: int = 400,
     update_mode: GridUpdateMode
     | Literal[
@@ -97,7 +102,7 @@ def AgGrid(
     allow_unsafe_jscode: bool = False,
     enable_enterprise_modules: bool
     | Literal["enterpriseOnly", "enterprise+AgCharts"] = False,
-    license_key: str = None,
+    license_key: str | None = None,
     conversion_errors: str = "coerce",
     columns_state=None,
     theme: str
@@ -519,7 +524,7 @@ def AgGrid(
     if not isinstance(sent_frame, pd.DataFrame):
         try_to_convert_back_to_original_types = False
 
-    custom_css = custom_css or dict()
+    custom_css = custom_css or {}
 
     if height is None:
         gridOptions["domLayout"] = "autoHeight"
@@ -631,7 +636,7 @@ def AgGrid(
         try:
             return str(pd.util.hash_pandas_object(df).sum())
         except TypeError:
-            logging.warning(
+            _LOGGER.warning(
                 "DataFrame contains non-hashable data, attempting type conversion..."
             )
 
@@ -649,7 +654,7 @@ def AgGrid(
                     )
                 return str(pd.util.hash_pandas_object(df_copy).sum())
             except (TypeError, ValueError, AttributeError) as e:
-                logging.warning(
+                _LOGGER.warning(
                     f"Type conversion failed ({e}), falling back to string-based hashing..."
                 )
                 return str(hash(df.to_string()))
@@ -670,31 +675,31 @@ def AgGrid(
     else:
         row_data = None
 
-    component_data = dict(
-        row_data=row_data,
-        data_hash=data_hash,
-        gridOptions=gridOptions,
-        height=height,
-        data_return_mode=data_return_mode,
-        frame_dtypes=str(frame_dtypes),
-        allow_unsafe_jscode=allow_unsafe_jscode,
-        columns_state=columns_state,
-        custom_css=custom_css,
-        enable_enterprise_modules=enable_enterprise_modules,
-        license_key=license_key,
-        manual_update=manual_update,
-        pro_assets=pro_assets,
-        show_download_button=show_download_button,
-        show_search=show_search,
-        show_toolbar=show_toolbar,
-        custom_jscode_for_grid_return=custom_jscode_for_grid_return,
-        should_grid_return=should_grid_return,
-        theme=themeObj,
-        debug=debug,
-        update_on=update_on,
-        use_json_serialization=use_json_serialization,
-        server_sync_strategy=server_sync_strategy,
-    )
+    component_data = {
+        "row_data": row_data,
+        "data_hash": data_hash,
+        "gridOptions": gridOptions,
+        "height": height,
+        "data_return_mode": data_return_mode,
+        "frame_dtypes": str(frame_dtypes),
+        "allow_unsafe_jscode": allow_unsafe_jscode,
+        "columns_state": columns_state,
+        "custom_css": custom_css,
+        "enable_enterprise_modules": enable_enterprise_modules,
+        "license_key": license_key,
+        "manual_update": manual_update,
+        "pro_assets": pro_assets,
+        "show_download_button": show_download_button,
+        "show_search": show_search,
+        "show_toolbar": show_toolbar,
+        "custom_jscode_for_grid_return": custom_jscode_for_grid_return,
+        "should_grid_return": should_grid_return,
+        "theme": themeObj,
+        "debug": debug,
+        "update_on": update_on,
+        "use_json_serialization": use_json_serialization,
+        "server_sync_strategy": server_sync_strategy,
+    }
 
     try:
         result = _get_component_func()(
@@ -711,7 +716,7 @@ def AgGrid(
         )
 
         if use_json_serialization == "auto" and data is not None and is_serialization_error:
-            logging.warning(
+            _LOGGER.warning(
                 f"JSON serialization failed, retrying with explicit JSON conversion: {error_msg}"
             )
             # Retry with JSON serialization enabled

@@ -12,7 +12,7 @@ class GridOptionsBuilder:
             return defaultdict(ddict)
 
         self.__grid_options = ddict()
-        self.sideBar: dict = dict()
+        self.sideBar: dict = {}
 
     @staticmethod
     def from_dataframe(dataframe, **default_column_parameters):
@@ -146,14 +146,14 @@ class GridOptionsBuilder:
         """
         self.__grid_options.update(props)
 
-    def configure_columns(self, column_names=[], **props):
+    def configure_columns(self, column_names=(), **props):
         """Batch configures columns. Key-pair values from props dict will be merged
         to colDefs which field property is in column_names list.
 
         Args:
             column_names (list, optional):
                 columns field properties. If any of colDefs matches **props dict is merged.
-                Defaults to [].
+                Defaults to () (no column is touched).
         """
         for k in self.__grid_options["columnDefs"]:
             if k in column_names:
@@ -230,7 +230,7 @@ class GridOptionsBuilder:
         header_checkbox: bool = False,
         header_checkbox_filtered_only: bool = True,
         pre_select_all_rows: bool = False,
-        pre_selected_rows: list = None,
+        pre_selected_rows: list | None = None,
         rowMultiSelectWithClick: bool = False,
         suppressRowDeselection: bool = False,
         suppressRowClickSelection: bool = False,

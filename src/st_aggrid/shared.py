@@ -229,7 +229,7 @@ class StAggridTheme(dict):
         super()
 
         self["params"] = {}
-        self["parts"] = list()
+        self["parts"] = []
         # themeName must always be set: the frontend theme parser falls back to
         # balham for an undefined name, silently discarding withParams/withParts.
         self["themeName"] = "custom"

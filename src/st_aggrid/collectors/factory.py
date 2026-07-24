@@ -25,19 +25,17 @@ def validate_collector_params(collect_grid_return: JsCode | None, should_grid_re
     ValueError
         If parameters are invalid
     """
-    if collect_grid_return is not None:
-        if not isinstance(collect_grid_return, JsCode):
-            raise ValueError(
-                "collect_grid_return must be a JsCode object. "
-                f"Got {type(collect_grid_return).__name__} instead."
-            )
-    
-    if should_grid_return is not None:
-        if not isinstance(should_grid_return, JsCode):
-            raise ValueError(
-                "should_grid_return must be a JsCode object. "
-                f"Got {type(should_grid_return).__name__} instead."
-            )
+    if collect_grid_return is not None and not isinstance(collect_grid_return, JsCode):
+        raise ValueError(
+            "collect_grid_return must be a JsCode object. "
+            f"Got {type(collect_grid_return).__name__} instead."
+        )
+
+    if should_grid_return is not None and not isinstance(should_grid_return, JsCode):
+        raise ValueError(
+            "should_grid_return must be a JsCode object. "
+            f"Got {type(should_grid_return).__name__} instead."
+        )
 
 
 def determine_collector(

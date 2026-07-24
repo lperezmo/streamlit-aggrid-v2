@@ -8,6 +8,11 @@ import pandas as pd
 
 from st_aggrid.shared import DataReturnMode
 
+# A library must not log through the root logger: root calls install a handler
+# on first use and the record carries no module name, so the message shows up
+# unattributed in the host app's console and cannot be silenced per package.
+_LOGGER = logging.getLogger(__name__)
+
 
 class AgGridReturn(Mapping):
     """
@@ -127,9 +132,12 @@ class AgGridReturn(Mapping):
                 converted_columns.append(
                     self._convert_with_error_policy(
                         column,
-                        lambda col, errors: pd.to_numeric(
+                        # dtype is bound as a default so the lambda captures
+                        # this iteration's dtype by value rather than closing
+                        # over the loop variable.
+                        lambda col, errors, dtype=original_dtype: pd.to_numeric(
                             col, errors=errors
-                        ).astype(original_dtype, copy=False),
+                        ).astype(dtype, copy=False),
                     )
                 )
             elif dtype_kind in ("O", "S", "U"):  # Object/String/Unicode
@@ -140,9 +148,9 @@ class AgGridReturn(Mapping):
                 converted_columns.append(
                     self._convert_with_error_policy(
                         column,
-                        lambda col, errors: pd.to_datetime(
+                        lambda col, errors, dtype=original_dtype: pd.to_datetime(
                             col, errors=errors
-                        ).astype(original_dtype, copy=False),
+                        ).astype(dtype, copy=False),
                     )
                 )
             elif dtype_kind == "m":  # Timedelta
@@ -463,7 +471,7 @@ class AgGridReturn(Mapping):
                 return self._process_grouped_response(nodes)
             else:
                 # Has groups but no proper parent paths - fall back to regular data
-                logging.warning(
+                _LOGGER.warning(
                     "Grouped data detected but no parentPath found in leaf nodes. Falling back to regular data."
                 )
 

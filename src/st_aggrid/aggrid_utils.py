@@ -61,13 +61,15 @@ def _parse_data_and_grid_options(
                 with open(os.path.abspath(grid_options)) as f:
                     grid_options = json.dumps(json.load(f))
             except Exception as ex:
-                raise Exception(f"Error reading {grid_options}. {ex}")
+                raise ValueError(f"Error reading {grid_options}. {ex}") from ex
 
         # if grid_options is a json string load is as as dict
         try:
             grid_options = json.loads(grid_options)
-        except Exception:
-            raise Exception("Error parsing gridOptions parameter as raw json.")
+        except Exception as ex:
+            raise ValueError(
+                "Error parsing gridOptions parameter as raw json."
+            ) from ex
     else:
         raise ValueError(
             "gridOptions must be a dict, a JSON string, or a path to a JSON file, "
@@ -85,13 +87,13 @@ def _parse_data_and_grid_options(
                     with open(os.path.abspath(data)) as f:
                         data = json.dumps(json.load(f))
                 except Exception as ex:
-                    raise Exception(f"Error reading {data}. {ex}")
+                    raise ValueError(f"Error reading {data}. {ex}") from ex
 
             # if data is a json string load is as as data frame
             try:
                 data = pd.read_json(StringIO(data))
-            except Exception:
-                raise Exception("Error parsing data parameter as raw json.")
+            except Exception as ex:
+                raise ValueError("Error parsing data parameter as raw json.") from ex
         # handles the case where dataframe is a polars dataframe without add dependency on polars
         if (
             hasattr(data, "__class__")
