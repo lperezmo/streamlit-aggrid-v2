@@ -49,10 +49,17 @@ export class MinimalCollector extends BaseCollector {
 
     const data: any[] = []
 
-    // Single pass, in the order the grid displays rows. Group nodes carry no
-    // row values of their own, so they are skipped.
+    // Single pass, in the order the grid displays rows.
+    //
+    // The test is on node.data, not on node.group. Under row grouping the two
+    // agree: AG Grid synthesizes the group rows and they carry no data, so
+    // they are skipped either way. Under treeData they do not. There the
+    // parents are rows the caller supplied and node.data holds their values,
+    // so keying off node.group silently returned the leaves only and a tree
+    // grid in MINIMAL mode lost every parent row. LegacyCollector emits all of
+    // them, so this was data loss unique to MINIMAL.
     api.forEachNodeAfterFilterAndSort((node: IRowNode) => {
-      if (node.group) {
+      if (node.data == null) {
         return
       }
       data.push(this.stripInternalFields(node.data))
@@ -70,10 +77,12 @@ export class MinimalCollector extends BaseCollector {
     // same shape LegacyCollector already produces under FILTERED_AND_SORTED,
     // where data is filtered but selections are not.
     const selectedRows = api
-      // Unlike the display walk, this includes group nodes, which carry no row
-      // values and would otherwise arrive as if they were data.
+      // getSelectedNodes() includes group nodes. The synthesized ones carry no
+      // row values and would arrive as if they were data, so they are dropped
+      // on the same node.data test the display walk uses, which keeps a
+      // selected treeData parent (a real row) in the result.
       .getSelectedNodes()
-      .filter((node: IRowNode) => !node.group)
+      .filter((node: IRowNode) => node.data != null)
       .map((node: IRowNode) => this.stripInternalFields(node.data))
 
     return this.createSuccessResult({

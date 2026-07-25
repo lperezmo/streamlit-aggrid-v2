@@ -332,7 +332,35 @@ def test_minimal_mode_still_reports_the_grid_rows_once_they_arrive(monkeypatch):
         grid_return={"data": [{"ints": 2, "floats": 2.5}], "selectedRows": []},
     )
 
-    assert call.response.data == [{"ints": 2, "floats": 2.5}]
+    assert call.response.data.to_dict("records") == [{"ints": 2, "floats": 2.5}]
+
+
+def test_minimal_mode_data_stays_a_dataframe_across_the_first_response(monkeypatch):
+    """``.data`` must not change type once the user touches the grid.
+
+    It returned the input DataFrame on a first render and the raw list of
+    record dicts from the payload afterwards, so ``response.data["col"]``,
+    ``.empty``, ``.iloc`` and ``len(response.data.index)`` all worked on load
+    and raised on the first selection. ``raw_data`` is where the records live.
+    """
+    before = render_grid(monkeypatch, DF.copy(), key="mn4", data_return_mode="MINIMAL")
+    after = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="mn5",
+        data_return_mode="MINIMAL",
+        grid_return={"data": [{"ints": 2, "floats": 2.5}], "selectedRows": []},
+    )
+
+    assert isinstance(before.response.data, pd.DataFrame)
+    assert isinstance(after.response.data, pd.DataFrame), (
+        "MINIMAL switched .data from a DataFrame to a list once the grid replied"
+    )
+    # Ordinary DataFrame use that used to break on the second render.
+    assert list(after.response.data["ints"]) == [2]
+    assert not after.response.data.empty
+    # The unwrapped payload is still reachable for callers that want it lean.
+    assert after.response.raw_data["data"] == [{"ints": 2, "floats": 2.5}]
 
 
 def test_minimal_mode_reports_an_empty_grid_as_empty(monkeypatch):
@@ -346,7 +374,12 @@ def test_minimal_mode_reports_an_empty_grid_as_empty(monkeypatch):
         grid_return={"data": [], "selectedRows": []},
     )
 
-    assert call.response.data == []
+    data = call.response.data
+    assert isinstance(data, pd.DataFrame)
+    assert data.empty
+    # pd.DataFrame([]) has no columns at all, which describes nothing. An empty
+    # result still describes the same table as a full one.
+    assert list(data.columns) == ["ints", "floats"]
 
 
 # ---------------------------------------------------------------------------
