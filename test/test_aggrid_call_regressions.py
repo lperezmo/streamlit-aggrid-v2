@@ -540,6 +540,27 @@ def test_update_on_dedupe_keeps_the_debounced_spec(monkeypatch):
     assert call.component_data["update_on"] == [("columnResized", 300)]
 
 
+def test_explicit_debounce_beats_the_one_update_mode_contributes(monkeypatch):
+    """A debounce the caller typed out must not be silently overwritten.
+
+    AgGrid appends the events implied by update_mode after the caller's own
+    update_on, and dedupe kept the last spec per event, so asking for a 5 s
+    debounce on columnResized alongside GridUpdateMode.COLUMN_RESIZED shipped
+    the enum's 300 ms instead. Nothing said so; the grid just chattered.
+    """
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="d4",
+        update_mode="COLUMN_RESIZED",
+        update_on=[("columnResized", 5000)],
+    )
+
+    assert call.component_data["update_on"] == [("columnResized", 5000)], (
+        "the caller's debounce was replaced by the one update_mode implies"
+    )
+
+
 def test_update_on_dedupe_preserves_caller_order(monkeypatch):
     """Order is first appearance, so a caller's own ordering survives."""
     call = render_grid(

@@ -220,6 +220,15 @@ def update_event_name(event):
     return event
 
 
+def _has_debounce(event):
+    """Whether an ``update_on`` entry names a debounce interval.
+
+    The two accepted forms are a bare event name and an ``(event, debounce_ms)``
+    pair, so carrying a second element is the whole test.
+    """
+    return isinstance(event, (tuple, list)) and len(event) > 1
+
+
 def dedupe_update_on(update_on):
     """Collapse ``update_on`` to one entry per AG Grid event.
 
@@ -230,10 +239,18 @@ def dedupe_update_on(update_on):
     Streamlit state write twice.
 
     Order follows first appearance, so a caller's own ``update_on`` ordering
-    survives. The spec kept is the *last* one seen, because that is the one
-    contributed by update_mode: a bare "columnResized" from the caller loses
-    to the ("columnResized", 300) that GridUpdateMode.COLUMN_RESIZED adds,
-    and dropping the debounce would be the more surprising outcome.
+    survives.
+
+    The spec kept is the first *debounced* one, falling back to the first seen
+    when no entry carries a debounce. ``AgGrid`` appends the events implied by
+    ``update_mode`` after the caller's own list, so this is what makes an
+    explicit debounce win: ``update_on=[("columnResized", 5000)]`` together
+    with ``GridUpdateMode.COLUMN_RESIZED`` keeps the caller's 5000 rather than
+    being quietly overwritten by the enum's 300. Keeping the last entry instead
+    got the reverse case right (a bare "columnResized" from the caller should
+    not drop the enum's debounce) and this one wrong; preferring a debounce
+    over a bare name gets both, because the only spec that can be silently
+    lost is the one that says nothing about timing.
     """
     order = []
     specs = {}
@@ -241,7 +258,9 @@ def dedupe_update_on(update_on):
         name = update_event_name(event)
         if name not in specs:
             order.append(name)
-        specs[name] = event
+            specs[name] = event
+        elif _has_debounce(event) and not _has_debounce(specs[name]):
+            specs[name] = event
     return [specs[name] for name in order]
 
 
