@@ -54,11 +54,15 @@ jobs:
         with: { python-version: '3.13' }
       - run: python scripts/gen_event_catalog.py --check
 
-  # Browser-less registration guard across every supported Streamlit version.
-  # Catches API drift like isolate_styles moving between the registration call
-  # (>= 1.53) and the per-call renderer (1.51 / 1.52).
-  smoke:
-    name: Smoke (Streamlit ${{ matrix.streamlit || 'latest' }})
+  # The whole browser-less suite, on every supported Streamlit version. It was
+  # called "Smoke" back when it ran a registration check alone; it now runs all
+  # 177 non-browser tests, and the old name undersold it badly enough that the
+  # matrix looked optional. It is not: the pandas 3 NaT regression showed up
+  # only on the "latest" leg, and API drift like isolate_styles moving between
+  # the registration call (>= 1.53) and the per-call renderer (1.51 / 1.52) is
+  # invisible to every other job.
+  python-suite:
+    name: Python (Streamlit ${{ matrix.streamlit || 'latest' }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -70,7 +74,7 @@ jobs:
 
       # The conftest builds and installs the wheel; without a frontend build
       # the wheel ships no assets and component discovery cannot resolve
-      # asset_dir, failing the smoke test on every Streamlit version.
+      # asset_dir, failing registration on every Streamlit version.
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
