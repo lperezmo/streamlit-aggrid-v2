@@ -12,15 +12,34 @@ committed.
 from __future__ import annotations
 
 import json
+import warnings
 
 import pandas as pd
 import pytest
 
 from st_aggrid import JsCode
 
-from grid_stub import nodes_payload, render_grid
+# _AGGRID_MODULE, not ``import st_aggrid.AgGrid``: the package __init__ rebinds
+# that name to the function, so the plain import hands back a callable with no
+# module globals on it. grid_stub goes through the module registry for the same
+# reason and documents it.
+from grid_stub import _AGGRID_MODULE, nodes_payload, render_grid
 
 DF = pd.DataFrame({"ints": [1, 2, 3], "floats": [1.5, 2.5, 3.5]})
+
+
+@pytest.fixture(autouse=True)
+def _reset_warning_dedupe():
+    """Forget which warnings this process has already shown.
+
+    AgGrid keeps a module-level set so a warning fires once rather than on
+    every Streamlit rerun. That state leaks between tests: whichever test
+    happened to run first got the warning and the rest saw silence, which made
+    the assertions here depend on collection order.
+    """
+    _AGGRID_MODULE._shown_once_warnings.clear()
+    yield
+    _AGGRID_MODULE._shown_once_warnings.clear()
 
 # What the browser sends back for DF: AG Grid hands values to Python as the
 # strings the cell renderers hold, so the dtype round-trip has real work to do.
@@ -707,4 +726,34 @@ def test_fit_columns_on_grid_load_is_not_reported_as_a_grid_option(monkeypatch):
 def test_unknown_string_theme_is_rejected(monkeypatch):
     """Unknown theme names silently fell through to AG Grid's balham theme."""
     with pytest.raises(ValueError, match="not a valid theme"):
-        render_grid(monkeypatch, DF.copy(), key="t1", theme="light")
+        render_grid(monkeypatch, DF.copy(), key="t1", theme="lavender")
+
+
+@pytest.mark.parametrize("name", ["light", "dark", "blue", "fresh"])
+def test_retired_theme_names_warn_instead_of_raising(monkeypatch, name):
+    """These four were in the published docstring for this function.
+
+    No release ever implemented them (the frontend fell through to balham for
+    any name it did not recognize), but rejecting them outright turns an app
+    written against the shipped docs from "renders balham" into a ValueError
+    that takes the page down, on a 0.x minor. Keep the rendering, say it is
+    going away.
+    """
+    with pytest.warns(DeprecationWarning, match=name):
+        call = render_grid(monkeypatch, DF.copy(), key=f"t-{name}", theme=name)
+
+    assert call.component_data["theme"]["themeName"] == "balham"
+
+
+def test_retired_theme_warning_fires_once_not_on_every_rerun(monkeypatch):
+    """Same reasoning as the toolbar warning: this is call-time, so it would
+    otherwise repeat on every Streamlit rerun."""
+    with pytest.warns(DeprecationWarning):
+        render_grid(monkeypatch, DF.copy(), key="t2a", theme="light")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        render_grid(monkeypatch, DF.copy(), key="t2b", theme="light")
+
+    retired = [w for w in caught if "is deprecated" in str(w.message) and "light" in str(w.message)]
+    assert retired == [], "the retired-theme warning repeated on the second render"

@@ -34,8 +34,17 @@ from st_aggrid.shared import (
 # unattributed in the host app's console and cannot be silenced per package.
 _LOGGER = logging.getLogger(__name__)
 
-# Track shown deprecation warnings to avoid repetition in Streamlit
-_shown_deprecation_warnings = set()
+# Warning keys already emitted in this process. A Streamlit script reruns
+# top to bottom on every interaction, so anything warned about at call time
+# would otherwise repeat for the lifetime of the app and train the reader to
+# ignore it. Holds deprecations and the one-off configuration warnings alike.
+_shown_once_warnings = set()
+
+# Theme names this component documented but never implemented. The frontend
+# fell through to balham for any name it did not recognize, so that is what
+# they rendered. Accepted with a DeprecationWarning rather than rejected, so
+# apps written against the old docstring keep working for one more release.
+_RETIRED_THEME_NAMES = frozenset({"light", "dark", "blue", "fresh"})
 
 _RELEASE = config("AGGRID_RELEASE", default=True, cast=bool)
 
@@ -244,11 +253,13 @@ def AgGrid(
         Pass a StAggridTheme instance to customize a base theme with
         .withParams()/.withParts(). Defaults to 'streamlit'.
 
-        Any other string raises ValueError. 'light', 'dark', 'blue' and
-        'fresh' used to be listed here, but no version of this component ever
-        implemented them: the frontend silently fell through to balham for
-        every name it did not recognize, so the four were documentation for
-        behavior that did not exist. Use 'balham' for the closest match, or a
+        Any other string raises ValueError, with four exceptions. 'light',
+        'dark', 'blue' and 'fresh' used to be listed here, but no version of
+        this component ever implemented them: the frontend silently fell
+        through to balham for every name it did not recognize, so the four
+        were documentation for behavior that did not exist. They are still
+        accepted, still render balham and now emit a DeprecationWarning; they
+        will raise in a future version. Use 'balham' for the same result, or a
         StAggridTheme if the point was to restyle the grid.
 
     custom_css : dict, optional
@@ -387,13 +398,13 @@ def AgGrid(
     if "reload_data" in default_column_parameters:
         default_column_parameters.pop("reload_data")
         warning_key = "reload_data_deprecated"
-        if warning_key not in _shown_deprecation_warnings:
+        if warning_key not in _shown_once_warnings:
             warnings.warn(
                 "The 'reload_data' parameter has been removed and has no effect.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            _shown_deprecation_warnings.add(warning_key)
+            _shown_once_warnings.add(warning_key)
 
     try_to_convert_back_to_original_types: bool = True
     # Deprecated parameter handling for backward compatibility
@@ -402,14 +413,14 @@ def AgGrid(
             "try_to_convert_back_to_original_types"
         )
         warning_key = "try_to_convert_back_to_original_types_deprecated"
-        if warning_key not in _shown_deprecation_warnings:
+        if warning_key not in _shown_once_warnings:
             warnings.warn(
                 "The 'try_to_convert_back_to_original_types' parameter is deprecated and will be removed in a future version. "
                 "The component now handles type preservation automatically where appropriate.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            _shown_deprecation_warnings.add(warning_key)
+            _shown_once_warnings.add(warning_key)
 
     ##Parses Themes
     if isinstance(theme, StAggridTheme):
@@ -422,7 +433,27 @@ def AgGrid(
     elif isinstance(theme, str):
         # Unknown names used to fall through to AG Grid's balham theme without
         # any warning, so validate against the themes the frontend knows.
-        if theme not in AgGridTheme:
+        if theme in _RETIRED_THEME_NAMES:
+            # Not raised, because these four were listed in this function's own
+            # published docstring. They never did anything (the frontend fell
+            # through to balham for any name it did not recognize), but an app
+            # written against the docs would go from "renders balham" to a
+            # ValueError that takes the whole page down, on a 0.x minor. Keep
+            # the old rendering for one release and say so.
+            warning_key = f"retired_theme_{theme}"
+            if warning_key not in _shown_once_warnings:
+                warnings.warn(
+                    f"theme={theme!r} is deprecated and will raise in a future "
+                    "version. No release ever implemented it: the frontend fell "
+                    "through to balham for every name it did not recognize, which "
+                    "is what this call keeps doing. Pass 'balham' for the same "
+                    "result, or a StAggridTheme to actually restyle the grid.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                _shown_once_warnings.add(warning_key)
+            theme = AgGridTheme.BALHAM.value
+        elif theme not in AgGridTheme:
             raise ValueError(
                 f"{theme} is not a valid theme. Available options: "
                 f"{[t.value for t in AgGridTheme]}"
@@ -463,14 +494,14 @@ def AgGrid(
     # Add deprecation warning for GridUpdateMode
     if update_mode != GridUpdateMode.NO_UPDATE:
         warning_key = "GridUpdateMode_deprecated"
-        if warning_key not in _shown_deprecation_warnings:
+        if warning_key not in _shown_once_warnings:
             warnings.warn(
                 "GridUpdateMode is deprecated and will be removed in a future version. "
                 "Use the 'update_on' parameter instead to specify which events should trigger updates.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            _shown_deprecation_warnings.add(warning_key)
+            _shown_once_warnings.add(warning_key)
 
     update_on_was_explicit = update_on is not None
     if update_on is None:
