@@ -100,23 +100,11 @@ extend-exclude = ["development/"]
 # local run and the CI run agree on what "default" means; an older ruff would
 # silently check a much smaller set and let new findings through.
 ignore = [
-    # Blind `except Exception` is the deliberate shape of this library's error
-    # boundaries, not an oversight: the component call, the collector call and
-    # the dtype round-trip all wrap arbitrary user code (JsCode, custom
-    # collectors, object-dtype frames) and either re-raise with a hint that
-    # names the likely cause or degrade to the unconverted value. Narrowing
-    # them would turn a helpful message into a raw stack trace in the user's
-    # app, or crash a grid over one uncoercible cell.
-    "BLE001",
     # TRY004 wants TypeError where AgGrid() raises ValueError for an argument
     # of the wrong type. Those ValueErrors are the documented, long-standing
     # public behavior of the entry point (v1 raised them too) and user code
     # catches them; swapping the class is an API break, not a lint fix.
     "TRY004",
-    # PYI034 wants `__enter__` to be annotated with `typing.Self`, which is
-    # 3.11+. The package supports 3.10 and does not depend on
-    # typing_extensions, so the class name is the only annotation available.
-    "PYI034",
 ]
 
 [tool.ruff.lint.isort]
@@ -132,5 +120,30 @@ known-local-folder = ["e2e_utils", "grid_stub", "utils"]
 # `from st_aggrid.AgGridReturn import AgGridReturn` are documented and used in
 # the wild, so renaming the files to satisfy a naming rule would break every
 # such import.
-"src/st_aggrid/AgGrid.py" = ["N999"]
-"src/st_aggrid/AgGridReturn.py" = ["N999"]
+"src/st_aggrid/AgGrid.py" = [
+    "N999",
+    # Blind `except Exception` is the deliberate shape of the two error
+    # boundaries in this file, not an oversight: the component call and the
+    # collector call both wrap arbitrary user code (JsCode, custom collectors,
+    # object-dtype frames) and re-raise with a hint that names the likely
+    # cause. Narrowing them would turn a helpful message into a raw stack
+    # trace in the user's app. It is scoped to these two files so a blind
+    # except anywhere else still gets flagged: the two enum lookups that used
+    # to hide behind a project-wide ignore were plain `DataReturnMode[...]` /
+    # `GridUpdateMode[...]` KeyErrors and are now caught as such.
+    "BLE001",
+]
+"src/st_aggrid/AgGridReturn.py" = [
+    "N999",
+    # The dtype round-trip is the third error boundary: conversion_errors
+    # ="ignore" is documented as "returns input unchanged on failure", and
+    # what pandas raises for a given uncoercible cell is not enumerable, so
+    # the fallback has to catch everything rather than crash a whole grid over
+    # one cell.
+    "BLE001",
+]
+# PYI034 wants `__enter__` to be annotated with `typing.Self`, which is 3.11+.
+# The package supports 3.10 and does not depend on typing_extensions, so the
+# class name is the only annotation available. Only this test helper defines
+# context managers, so the exemption belongs here rather than project-wide.
+"test/e2e_utils.py" = ["PYI034"]

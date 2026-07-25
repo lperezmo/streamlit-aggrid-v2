@@ -430,8 +430,8 @@ def AgGrid(
     elif isinstance(data_return_mode, str):
         try:
             data_return_mode = DataReturnMode[data_return_mode.upper()]
-        except Exception:
-            raise ValueError(f"{data_return_mode} is not valid.")
+        except KeyError as ex:
+            raise ValueError(f"{data_return_mode} is not valid.") from ex
 
     # Parse update Mode
     if not isinstance(update_mode, (str, GridUpdateMode)):
@@ -441,8 +441,8 @@ def AgGrid(
     elif isinstance(update_mode, str):
         try:
             update_mode = GridUpdateMode[update_mode.upper()]
-        except Exception:
-            raise ValueError(f"{update_mode} is not valid.")
+        except KeyError as ex:
+            raise ValueError(f"{update_mode} is not valid.") from ex
 
     # Add deprecation warning for GridUpdateMode
     if update_mode != GridUpdateMode.NO_UPDATE:
