@@ -371,6 +371,47 @@ def test_update_on_dedupe_preserves_caller_order(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# show_toolbar under update_mode=MANUAL
+# ---------------------------------------------------------------------------
+
+
+def test_manual_update_mode_warns_when_it_overrides_show_toolbar(monkeypatch, caplog):
+    """An explicit show_toolbar=False is discarded under MANUAL. The override
+    has to stay (no toolbar means no update button means no return path at
+    all), but it must not be silent."""
+    with caplog.at_level("WARNING", logger="st_aggrid.AgGrid"):
+        call = render_grid(
+            monkeypatch,
+            DF.copy(),
+            key="m5",
+            update_mode="MANUAL",
+            show_toolbar=False,
+        )
+
+    assert call.component_data["show_toolbar"] is True
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("show_toolbar" in m and "MANUAL" in m for m in messages), messages
+
+
+def test_manual_update_mode_does_not_warn_about_the_default_toolbar(monkeypatch, caplog):
+    """Only an explicit False is a conflict. Warning on the default would fire
+    for every MANUAL grid and say nothing about the caller's intent."""
+    with caplog.at_level("WARNING", logger="st_aggrid.AgGrid"):
+        call = render_grid(monkeypatch, DF.copy(), key="m6", update_mode="MANUAL")
+
+    assert call.component_data["show_toolbar"] is True
+    assert not [r for r in caplog.records if "show_toolbar" in r.getMessage()]
+
+
+def test_show_toolbar_default_is_false_without_manual(monkeypatch):
+    """The sentinel default must resolve to False before it is sent: the
+    frontend reads a missing show_toolbar as true."""
+    call = render_grid(monkeypatch, DF.copy(), key="m7")
+
+    assert call.component_data["show_toolbar"] is False
+
+
+# ---------------------------------------------------------------------------
 # Zero-node responses
 # ---------------------------------------------------------------------------
 

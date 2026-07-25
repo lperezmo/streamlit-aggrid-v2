@@ -125,7 +125,7 @@ def AgGrid(
     key: typing.Any = None,
     update_on=None,
     callback=None,
-    show_toolbar: bool = False,
+    show_toolbar: bool | None = None,
     show_search: bool = True,
     show_download_button: bool = True,
     custom_jscode_for_grid_return: JsCode = None,
@@ -263,9 +263,11 @@ def AgGrid(
 
     show_toolbar : bool, optional
         Show toolbar above the grid.
-        Defaults to False, except when update_mode is MANUAL, where it is
-        forced to True because the manual update button lives in the toolbar
-        and would otherwise be unreachable.
+        Defaults to None, which means False, except when update_mode is
+        MANUAL, where it is forced to True because the manual update button
+        lives in the toolbar and would otherwise be unreachable. Passing False
+        explicitly under MANUAL is still overridden, but logs a warning naming
+        the conflict instead of discarding the argument silently.
 
     show_search : bool, optional
         Show search bar in toolbar.
@@ -472,8 +474,15 @@ def AgGrid(
                 update_on = []
             # The manual update button lives inside the toolbar, so a hidden
             # toolbar would leave a manual-update grid with no way to update.
-            if not show_toolbar:
-                show_toolbar = True
+            if show_toolbar is False:
+                _LOGGER.warning(
+                    "show_toolbar=False conflicts with update_mode=MANUAL and is "
+                    "being overridden to True: the manual update button lives in "
+                    "the toolbar, so hiding it would leave the grid with no way "
+                    "to return data. Drop update_mode=MANUAL, or pass update_on "
+                    "explicitly, if the toolbar has to stay hidden."
+                )
+            show_toolbar = True
         else:
             update_on.extend(parse_update_mode(update_mode))
 
@@ -483,6 +492,13 @@ def AgGrid(
     # twice per event. update_mode re-adds the same defaults update_on already
     # carries, so MODEL_CHANGED, VALUE_CHANGED and GRID_CHANGED all did this.
     update_on = dedupe_update_on(update_on)
+
+    # None is the "caller said nothing" sentinel used above to tell an explicit
+    # show_toolbar=False from the default. The frontend reads a missing value as
+    # true (`show_toolbar ?? true`), so it must be resolved before it goes out.
+    if show_toolbar is None:
+        show_toolbar = False
+
     # Validate CUSTOM mode parameters
     if data_return_mode == DataReturnMode.CUSTOM:
         if custom_jscode_for_grid_return is None:
