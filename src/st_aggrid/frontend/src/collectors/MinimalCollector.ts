@@ -8,6 +8,10 @@
  * collector sends only the row values the user can actually see, in display
  * order, plus the selected rows, and it walks the grid once.
  *
+ * Selections are read from getSelectedNodes() rather than picked up during that
+ * walk, so a selected row that a filter is currently hiding is still reported,
+ * matching every other data return mode.
+ *
  * The shape matches what MinimalResponse on the Python side reads:
  * ``data`` and ``selectedRows``.
  */
@@ -44,7 +48,6 @@ export class MinimalCollector extends BaseCollector {
     }
 
     const data: any[] = []
-    const selectedRows: any[] = []
 
     // Single pass, in the order the grid displays rows. Group nodes carry no
     // row values of their own, so they are skipped.
@@ -52,14 +55,26 @@ export class MinimalCollector extends BaseCollector {
       if (node.group) {
         return
       }
-
-      const row = this.stripInternalFields(node.data)
-      data.push(row)
-
-      if (node.isSelected()) {
-        selectedRows.push(row)
-      }
+      data.push(this.stripInternalFields(node.data))
     })
+
+    // Asked for directly rather than inferred from the walk above. AG Grid does
+    // not deselect a row when a filter hides it, so collecting selections during
+    // a post-filter walk silently dropped any selected row that was currently
+    // filtered out, while every other data return mode still reported it:
+    // LegacyCollector walks forEachNode (all rows) and Python filters on
+    // isSelected. getSelectedNodes() costs the size of the selection rather
+    // than another pass over the rows, so parity is cheap here.
+    //
+    // A row can therefore be in selectedRows without being in data. That is the
+    // same shape LegacyCollector already produces under FILTERED_AND_SORTED,
+    // where data is filtered but selections are not.
+    const selectedRows = api
+      // Unlike the display walk, this includes group nodes, which carry no row
+      // values and would otherwise arrive as if they were data.
+      .getSelectedNodes()
+      .filter((node: IRowNode) => !node.group)
+      .map((node: IRowNode) => this.stripInternalFields(node.data))
 
     return this.createSuccessResult({
       data: data,

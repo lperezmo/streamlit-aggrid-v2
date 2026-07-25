@@ -300,3 +300,32 @@ st.html(
     <pre data-testid='minimal-selected'>{_dump_minimal(minimal_selected)}</pre>
     """
 )
+
+# 14) MINIMAL with a selected row that a filter hides. Selections used to be
+# picked up during the post-filter display walk, so a selected row the quick
+# filter was hiding silently disappeared from .selected_rows, while every other
+# data return mode still reported it (LegacyCollector walks every node and
+# Python filters on isSelected). They now come from getSelectedNodes().
+hidden_sel_df = pd.DataFrame(
+    {"tag": ["keep-a", "keep-b", "gone-c"], "n": [1, 2, 3]}
+)
+gb_hidden = GridOptionsBuilder.from_dataframe(hidden_sel_df)
+gb_hidden.configure_selection(selection_mode="multiple", use_checkbox=True)
+hidden_result = AgGrid(
+    hidden_sel_df,
+    gridOptions=gb_hidden.build(),
+    data_return_mode="MINIMAL",
+    # filterChanged is what carries the quick-filter change back to Python.
+    update_on=["selectionChanged", "filterChanged"],
+    show_toolbar=True,
+    show_search=True,
+    key="minimal_hidden_selection_grid",
+)
+
+st.html(
+    f"""
+    <h2>minimal hidden selection</h2>
+    <pre data-testid='hidden-data'>{_dump_minimal(hidden_result.data)}</pre>
+    <pre data-testid='hidden-selected'>{_dump_minimal(hidden_result.selected_rows)}</pre>
+    """
+)

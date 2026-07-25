@@ -341,6 +341,46 @@ def test_minimal_data_return_mode_returns_rows(page: Page):
     expect(data_echo).not_to_contain_text("rowIndex")
 
 
+def test_minimal_reports_a_selected_row_that_a_filter_hides(page: Page):
+    """A selected row must stay in selected_rows once a filter hides it.
+
+    AG Grid does not deselect a row when a filter stops displaying it, and
+    MinimalCollector used to pick selections up during its post-filter display
+    walk, so a hidden selected row silently vanished from the selection while
+    every other data return mode still reported it. That breaks the ordinary
+    "tick some rows, then act on them" flow with no error: the handler just
+    receives fewer rows than the user ticked.
+    """
+    grid = _grid(page, "minimal_hidden_selection_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    expect(grid.locator(".ag-row")).to_have_count(3)
+
+    data_echo = page.get_by_test_id("hidden-data")
+    selected_echo = page.get_by_test_id("hidden-selected")
+
+    # Tick keep-a and gone-c. Checkbox clicks, so both land as one selection.
+    grid.locator(".ag-row[row-index='0'] .ag-selection-checkbox").first.click()
+    expect(selected_echo).to_contain_text("keep-a")
+    grid.locator(".ag-row[row-index='2'] .ag-selection-checkbox").first.click()
+    expect(selected_echo).to_contain_text("gone-c")
+
+    # Filter so that gone-c is no longer displayed. The row stays selected.
+    # "Search..." is the toolbar's own input. The separate QuickSearch.tsx
+    # component uses "quickfilter..." but nothing renders it.
+    grid.get_by_placeholder("Search...").fill("keep")
+
+    # Proves the filter actually took effect, so the assertion below is about
+    # the selection and not about a filter that quietly did nothing.
+    expect(grid.locator(".ag-row")).to_have_count(2)
+    expect(data_echo).not_to_contain_text("gone-c")
+
+    # The whole point: still selected, still reported, though not displayed.
+    expect(selected_echo).to_contain_text("gone-c")
+    expect(selected_echo).to_contain_text("keep-a")
+    # And the payload stays lean.
+    expect(selected_echo).not_to_contain_text("::auto_unique_id::")
+
+
 def test_columns_auto_size_mode_fit_contents(page: Page):
     """columns_auto_size_mode=FIT_CONTENTS must size columns to their content,
     overriding the fitGridWidth strategy that from_dataframe injects.
