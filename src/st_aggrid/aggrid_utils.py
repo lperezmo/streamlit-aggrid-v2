@@ -163,6 +163,42 @@ def _parse_data_and_grid_options(
     return data, grid_options, column_types
 
 
+def update_event_name(event):
+    """The AG Grid event name an ``update_on`` entry refers to.
+
+    Entries are either a plain event name or an ``(event, debounce_ms)``
+    tuple, and the two forms describe the same listener.
+    """
+    if isinstance(event, (tuple, list)):
+        return event[0]
+    return event
+
+
+def dedupe_update_on(update_on):
+    """Collapse ``update_on`` to one entry per AG Grid event.
+
+    The frontend builds a fresh closure for every entry and hands each one to
+    ``api.addEventListener``, which keys its listener set by function identity.
+    Two entries for the same event therefore attach two live listeners, and
+    every occurrence of that event runs the whole collector walk and the
+    Streamlit state write twice.
+
+    Order follows first appearance, so a caller's own ``update_on`` ordering
+    survives. The spec kept is the *last* one seen, because that is the one
+    contributed by update_mode: a bare "columnResized" from the caller loses
+    to the ("columnResized", 300) that GridUpdateMode.COLUMN_RESIZED adds,
+    and dropping the debounce would be the more surprising outcome.
+    """
+    order = []
+    specs = {}
+    for event in update_on:
+        name = update_event_name(event)
+        if name not in specs:
+            order.append(name)
+        specs[name] = event
+    return [specs[name] for name in order]
+
+
 def parse_update_mode(update_mode: GridUpdateMode, update_on=None):
     def add_unique_update_event(update_on, event):
         if event not in update_on:
@@ -187,4 +223,4 @@ def parse_update_mode(update_mode: GridUpdateMode, update_on=None):
         add_unique_update_event(update_on, "columnPinned")
     if update_mode & GridUpdateMode.COLUMN_VISIBLE:
         add_unique_update_event(update_on, "columnVisible")
-    return update_on
+    return dedupe_update_on(update_on)

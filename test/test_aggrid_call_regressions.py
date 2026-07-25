@@ -311,6 +311,66 @@ def test_default_update_mode_keeps_the_default_events(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# update_on must hold one entry per event
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "update_mode",
+    ["MODEL_CHANGED", "VALUE_CHANGED", "GRID_CHANGED", "SELECTION_CHANGED"],
+)
+def test_update_mode_does_not_duplicate_the_default_events(monkeypatch, update_mode):
+    """Each AG Grid event may appear at most once in update_on.
+
+    parse_update_mode deduped only within the list it built, and the result was
+    appended onto the already-populated defaults. The frontend attaches a fresh
+    closure per entry and AG Grid stores listeners in a Set keyed by function
+    identity, so both fired: the full collector walk and the Streamlit state
+    write ran twice for every event.
+    """
+    call = render_grid(monkeypatch, DF.copy(), key="d1", update_mode=update_mode)
+
+    update_on = call.component_data["update_on"]
+    names = [e[0] if isinstance(e, (list, tuple)) else e for e in update_on]
+    assert len(names) == len(set(names)), f"duplicate update_on entries: {update_on}"
+    # The defaults are still all there; dedupe must not drop events.
+    assert {"cellValueChanged", "selectionChanged", "filterChanged", "sortChanged"} <= set(names)
+
+
+def test_update_on_dedupe_keeps_the_debounced_spec(monkeypatch):
+    """When the same event arrives as a bare name and as a debounced tuple,
+    the tuple wins: silently dropping the debounce would be the more surprising
+    outcome, and it is what update_mode contributes."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="d2",
+        update_mode="COLUMN_RESIZED",
+        update_on=["columnResized"],
+    )
+
+    assert call.component_data["update_on"] == [("columnResized", 300)]
+
+
+def test_update_on_dedupe_preserves_caller_order(monkeypatch):
+    """Order is first appearance, so a caller's own ordering survives."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="d3",
+        update_mode="MODEL_CHANGED",
+        update_on=["sortChanged", "cellValueChanged"],
+    )
+
+    assert call.component_data["update_on"] == [
+        "sortChanged",
+        "cellValueChanged",
+        "selectionChanged",
+        "filterChanged",
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Zero-node responses
 # ---------------------------------------------------------------------------
 

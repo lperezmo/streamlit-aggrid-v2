@@ -15,6 +15,7 @@ from st_aggrid import _compat
 from st_aggrid.aggrid_utils import (
     _parse_data_and_grid_options,
     _sanitize_nan_inf,
+    dedupe_update_on,
     parse_update_mode,
 )
 from st_aggrid.AgGridReturn import AgGridReturn
@@ -476,6 +477,12 @@ def AgGrid(
         else:
             update_on.extend(parse_update_mode(update_mode))
 
+    # One listener per event. The frontend attaches a fresh closure for every
+    # entry and AG Grid keys listeners by function identity, so a duplicated
+    # entry means the collector walk and the Streamlit state write both run
+    # twice per event. update_mode re-adds the same defaults update_on already
+    # carries, so MODEL_CHANGED, VALUE_CHANGED and GRID_CHANGED all did this.
+    update_on = dedupe_update_on(update_on)
     # Validate CUSTOM mode parameters
     if data_return_mode == DataReturnMode.CUSTOM:
         if custom_jscode_for_grid_return is None:
