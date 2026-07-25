@@ -43,6 +43,12 @@ DEFAULT_COLUMN_PROPS = [
 ]
 
 
+# gridOptions.json and columnProps.json were scraped from the AG Grid docs,
+# https://ag-grid.com/react-data-grid/grid-options/ and .../column-properties/,
+# and are checked in as snapshots. There is no automated refresh: the scraper
+# that produced them selected on hashed CSS classes from the docs build and
+# stopped matching long ago. Regenerating means writing the extraction against
+# whatever the page looks like at the time.
 def getAllGridOptions():
     jsonRoot = pathlib.Path(__file__).parent / "json"
     with open(jsonRoot / "gridOptions.json") as f:
@@ -158,39 +164,6 @@ def walk_gridOptions(go, func):
             walk_gridOptions(value, func)
         else:
             go[k] = func(value)
-
-
-def fetch_grid_options_from_site():
-    import itertools
-
-    import requests
-    from bs4 import BeautifulSoup
-
-    # Fetch the URL text
-    url = "https://ag-grid.com/react-data-grid/grid-options/"
-    response = requests.get(url)
-
-    # Parse the HTML text
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    result = []
-
-    for r in soup.select("tr"):
-        c1, c2 = r.select("td")
-        element = c1.select_one("h6._name_1pw3t_115 > span").text
-        labels = [p.text for p in c1.select("span._metaLabel_1pw3t_162")]
-        values = [p.text for p in c1.select("span._metaValue_1pw3t_167")]
-        args = dict(itertools.zip_longest(labels, values))
-        description = c2.text
-        i = {}
-        i["name"] = element
-        i["props"] = args
-        i["description"] = description
-        result.append(i)
-
-    import json
-
-    return json.dumps(result, indent=4)
 
 
 # add deprecation note
