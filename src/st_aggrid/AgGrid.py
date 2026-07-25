@@ -242,6 +242,13 @@ def AgGrid(
         Pass a StAggridTheme instance to customize a base theme with
         .withParams()/.withParts(). Defaults to 'streamlit'.
 
+        Any other string raises ValueError. 'light', 'dark', 'blue' and
+        'fresh' used to be listed here, but no version of this component ever
+        implemented them: the frontend silently fell through to balham for
+        every name it did not recognize, so the four were documentation for
+        behavior that did not exist. Use 'balham' for the closest match, or a
+        StAggridTheme if the point was to restyle the grid.
+
     custom_css : dict, optional
         Custom CSS rules injected into the component iframe.
         Defaults to None.

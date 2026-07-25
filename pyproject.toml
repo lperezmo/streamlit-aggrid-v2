@@ -80,6 +80,19 @@ version_toml = [
 ]
 tag_format = "v{version}"
 commit_message = "chore(release): v{version}"
+# A BREAKING CHANGE footer on a 0.x version would otherwise cut 1.0.0. This
+# package is not declaring API stability yet, so a break cuts a 0.x minor
+# (0.2.7 -> 0.3.0) instead.
+#
+# Both settings are needed. major_on_zero=false is what reduces a breaking
+# change to a minor bump on 0.x, but it is only consulted when zero versions
+# are allowed at all: python-semantic-release 10 flipped the default of
+# allow_zero_version to false, which forces the *next* release off 0.x to
+# 1.0.0 no matter what the commits say. The release workflow pins the v9
+# action, where the default is still true, so spelling it out here is what
+# keeps the two in agreement if that pin ever moves.
+major_on_zero = false
+allow_zero_version = true
 
 [tool.pytest.ini_options]
 # CI selects suites by marker, not by filename. Listing files in the workflow
