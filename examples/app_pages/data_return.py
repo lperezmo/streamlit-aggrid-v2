@@ -33,7 +33,10 @@ st.info(
         "As input": "Returns the original DataFrame regardless of grid state.",
         "Filtered": "Returns only rows that pass the active filters (original sort order).",
         "Filtered & sorted": "Returns rows matching filters, in the grid's current sort order.",
-        "Minimal": "Returns only the grid's internal state: lightest payload.",
+        "Minimal": (
+            "Returns the displayed rows and the selection as plain records, "
+            "with no node metadata, grid state or column state: lightest payload."
+        ),
     }[mode_label],
     icon=":material/info:",
 )
