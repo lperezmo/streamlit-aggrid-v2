@@ -126,7 +126,9 @@ class AgGridReturn(Mapping):
             # Convert based on original dtype kind
             if dtype_kind == "i":  # Integer
                 converted_columns.append(
-                    self._convert_to_integer(column)
+                    self._convert_with_error_policy(
+                        column, self._convert_to_integer
+                    )
                 )
             elif dtype_kind == "f":  # Float
                 converted_columns.append(
@@ -183,24 +185,31 @@ class AgGridReturn(Mapping):
                 return column
         return converter(column, self._conversion_errors)
 
-    def _convert_to_integer(self, column):
+    def _convert_to_integer(self, column, errors="coerce"):
         """Convert column to Int64, falling back to Float64 on errors.
+
+        ``errors`` is the pandas policy derived from ``conversion_errors`` by
+        _convert_with_error_policy, which is the only caller. It used to be
+        hardcoded to "coerce", so an uncoercible cell silently became <NA>
+        under conversion_errors="ignore" and never raised under "raise",
+        making the parameter a no-op for every integer column.
 
         Args:
             column: Series to convert
+            errors: pandas ``errors`` policy for the numeric conversion
 
         Returns:
             Series converted to Int64 or Float64
         """
         try:
             return pd.to_numeric(
-                column, downcast="integer", errors="coerce"
+                column, downcast="integer", errors=errors
             ).astype("Int64", copy=False)
         except TypeError:
             warnings.warn(
                 f"Error casting {column.name} to Int64. Falling back to Float64"
             )
-            return pd.to_numeric(column, errors="coerce").astype(
+            return pd.to_numeric(column, errors=errors).astype(
                 "Float64", copy=False
             )
 

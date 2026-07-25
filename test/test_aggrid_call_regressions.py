@@ -412,6 +412,75 @@ def test_show_toolbar_default_is_false_without_manual(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# conversion_errors applies to every column kind
+# ---------------------------------------------------------------------------
+
+# One integer column, and a value the browser sends back that cannot be a
+# number. This is the case conversion_errors exists for.
+BAD_INTS = nodes_payload([{"ints": "not-a-number", "floats": "1.5"}])
+
+
+def test_conversion_errors_ignore_leaves_an_integer_column_alone(monkeypatch):
+    """conversion_errors="ignore" is documented as "returns input unchanged on
+    failure", and it was honored for float and datetime columns only. The
+    integer branch hardcoded errors="coerce", so the uncoercible value came
+    back as <NA> and the original was gone."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="c1",
+        conversion_errors="ignore",
+        grid_return=BAD_INTS,
+    )
+
+    assert list(call.response.data["ints"]) == ["not-a-number"]
+
+
+def test_conversion_errors_raise_propagates_on_an_integer_column(monkeypatch):
+    """conversion_errors="raise" is documented as "raises exception on
+    conversion failure". The integer branch swallowed the failure."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="c2",
+        conversion_errors="raise",
+        grid_return=BAD_INTS,
+    )
+
+    with pytest.raises(ValueError):
+        _ = call.response.data
+
+
+def test_conversion_errors_coerce_still_nulls_an_integer_column(monkeypatch):
+    """The default is unchanged: an uncoercible value becomes <NA>."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="c3",
+        conversion_errors="coerce",
+        grid_return=BAD_INTS,
+    )
+
+    ints = call.response.data["ints"]
+    assert str(ints.dtype) == "Int64"
+    assert bool(ints.isna().all())
+
+
+def test_conversion_errors_ignore_does_not_disturb_good_integers(monkeypatch):
+    """"ignore" must only fall back when the conversion actually fails."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="c4",
+        conversion_errors="ignore",
+        grid_return=ROWS_BACK,
+    )
+
+    assert str(call.response.data["ints"].dtype) == "Int64"
+    assert list(call.response.data["ints"]) == [1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
 # Zero-node responses
 # ---------------------------------------------------------------------------
 
