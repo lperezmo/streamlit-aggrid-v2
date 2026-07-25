@@ -16,6 +16,8 @@ import json
 import pandas as pd
 import pytest
 
+from st_aggrid import JsCode
+
 from grid_stub import nodes_payload, render_grid
 
 DF = pd.DataFrame({"ints": [1, 2, 3], "floats": [1.5, 2.5, 3.5]})
@@ -195,6 +197,105 @@ def test_row_data_in_grid_options_is_still_moved_without_json_serialization(monk
 
     assert "rowData" not in call.grid_options
     assert [row["a"] for row in call.component_data["row_data"]] == [1, 2]
+
+
+# ---------------------------------------------------------------------------
+# The caller's gridOptions dict is an input, not scratch space
+# ---------------------------------------------------------------------------
+#
+# A Streamlit script reruns top to bottom on every interaction, and it is
+# ordinary to build gridOptions once and keep it: in session_state, behind
+# st.cache_resource, or as a module-level constant in a helper module. Every
+# write AgGrid made into that dict therefore landed on the next rerun.
+
+
+def test_json_serialization_does_not_write_row_data_into_the_caller_dict(monkeypatch):
+    """The serialized frame must not be parked on the caller's own dict."""
+    grid_options = {"columnDefs": [{"field": "ints"}]}
+
+    render_grid(
+        monkeypatch,
+        DF.copy(),
+        gridOptions=grid_options,
+        key="gm1",
+        use_json_serialization=True,
+    )
+
+    assert "rowData" not in grid_options, (
+        "AgGrid wrote the serialized frame onto the caller's gridOptions dict"
+    )
+
+
+def test_reused_grid_options_dict_survives_a_rerun_under_json_serialization(monkeypatch):
+    """Two renders from one gridOptions dict must both work.
+
+    The first render used to write rowData onto the caller's dict, so the
+    second saw data supplied by both ``data=`` and ``gridOptions.rowData`` and
+    raised. The grid rendered once and then took the page down on the next
+    interaction.
+    """
+    grid_options = {"columnDefs": [{"field": "ints"}]}
+
+    for run in ("gm2a", "gm2b", "gm2c"):
+        call = render_grid(
+            monkeypatch,
+            DF.copy(),
+            gridOptions=grid_options,
+            key=run,
+            use_json_serialization=True,
+        )
+        assert isinstance(call.grid_options["rowData"], str)
+
+
+def test_row_data_is_not_popped_out_of_the_caller_dict(monkeypatch):
+    """The mirror image: rows supplied through gridOptions must survive.
+
+    rowData was popped off the caller's dict to become the data frame, so a
+    reused dict had no rows left on the second render and the grid came back
+    empty. Silent, unlike the ValueError above.
+    """
+    grid_options = {"columnDefs": [{"field": "a"}], "rowData": [{"a": 1}, {"a": 2}]}
+
+    for run in ("gm3a", "gm3b"):
+        call = render_grid(monkeypatch, gridOptions=grid_options, key=run)
+        assert [row["a"] for row in call.component_data["row_data"]] == [1, 2]
+
+    assert grid_options["rowData"] == [{"a": 1}, {"a": 2}]
+
+
+def test_jscode_is_not_flattened_inside_the_caller_dict(monkeypatch):
+    """walk_gridOptions rewrites JsCode leaves into ::JSCODE:: strings in
+    place. Reaching into the caller's colDefs meant the second render handed
+    the frontend an already-flattened string where it expects marker-wrapped
+    code it re-parses."""
+    getter = JsCode("function(params) { return params.data.ints }")
+    grid_options = {"columnDefs": [{"field": "ints", "valueGetter": getter}]}
+
+    render_grid(
+        monkeypatch,
+        DF.copy(),
+        gridOptions=grid_options,
+        key="gm4",
+        allow_unsafe_jscode=True,
+    )
+
+    assert grid_options["columnDefs"][0]["valueGetter"] is getter
+
+
+def test_grid_options_copy_shares_its_leaves(monkeypatch):
+    """Only the container spine is copied. Callers compare JsCode objects and
+    callables by identity, so duplicating them would be its own bug."""
+    getter = JsCode("function(params) { return 1 }")
+    grid_options = {"columnDefs": [{"field": "ints", "valueGetter": getter}]}
+
+    call = render_grid(
+        monkeypatch, DF.copy(), gridOptions=grid_options, key="gm5"
+    )
+
+    # Not rewritten here (allow_unsafe_jscode defaults to False), so the leaf
+    # that reached the payload is the very object the caller passed in.
+    assert call.grid_options["columnDefs"][0]["valueGetter"] is getter
+    assert call.grid_options["columnDefs"] is not grid_options["columnDefs"]
 
 
 # ---------------------------------------------------------------------------

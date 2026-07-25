@@ -16,7 +16,7 @@ from st_aggrid._event_catalog import (
     INTERNAL_EVENTS,
     ROW_NODE_ONLY_EVENTS,
 )
-from st_aggrid.grid_options_builder import GridOptionsBuilder
+from st_aggrid.grid_options_builder import GridOptionsBuilder, _copy_containers
 from st_aggrid.shared import GridUpdateMode, JsCode, walk_gridOptions
 
 
@@ -60,7 +60,25 @@ def _parse_data_and_grid_options(
         # May still be inferred from data below; empty grid otherwise.
         grid_options = {}
     elif isinstance(grid_options, Mapping):
-        pass
+        # Detached from the caller's object, because everything below writes
+        # into it: rowData is popped out of it, walk_gridOptions rewrites JsCode
+        # leaves in place, _sanitize_nan_inf replaces non-finite floats, and
+        # AgGrid() puts the serialized frame back on rowData afterwards. A
+        # Streamlit app that keeps one gridOptions dict across reruns (in
+        # session_state, behind st.cache_resource, or as a module constant) was
+        # therefore handing a different dict to every rerun than the one it
+        # built. Under use_json_serialization=True that turned into a hard
+        # failure: the first render wrote rowData onto the caller's dict, and
+        # the second saw both data= and gridOptions.rowData and raised. Popping
+        # rowData had the mirror-image effect, emptying a grid whose rows came
+        # from a reused dict on the second render.
+        #
+        # Only the container spine is copied. _copy_containers shares every
+        # leaf, so JsCode objects and callables the caller holds a reference to
+        # keep their identity; the containers are all that anything mutates.
+        grid_options = _copy_containers(
+            grid_options if isinstance(grid_options, dict) else dict(grid_options)
+        )
     elif isinstance(grid_options, (str, Path)):
         if isinstance(grid_options, Path):
             grid_options = str(Path(grid_options).resolve().absolute())
