@@ -58,6 +58,14 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/st_aggrid"]
+# Only the built bundle ships from frontend/. The CCv2 manifest points
+# asset_dir at frontend/build, so that is the one directory Streamlit ever
+# serves; the TypeScript sources, vite/tsconfig/prettier config and
+# package-lock.json are unreachable from the browser and unread by Python.
+# Excluding the subtree and letting the artifacts patterns below add build/
+# back keeps that rule in one place. The sdist already worked this way, via
+# its explicit include list.
+exclude = ["src/st_aggrid/frontend/**"]
 artifacts = [
     "src/st_aggrid/frontend/build/**/*",
     "src/st_aggrid/json/**/*.json",
