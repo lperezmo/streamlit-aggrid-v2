@@ -17,6 +17,7 @@ from st_aggrid.aggrid_utils import (
     _sanitize_nan_inf,
     dedupe_update_on,
     parse_update_mode,
+    validate_update_on,
 )
 from st_aggrid.AgGridReturn import AgGridReturn
 from st_aggrid.shared import (
@@ -263,6 +264,13 @@ def AgGrid(
         except when update_mode is GridUpdateMode.MANUAL, where the default is
         no events at all so the update button is the only return path.
 
+        Names are checked against the AG Grid version bundled with this
+        package. An entry that cannot fire, either because it is not an AG
+        Grid event or because it is dispatched on a Column or a row node
+        rather than on the grid, warns and names the likely intended event.
+        The entry is still forwarded: the check is advisory, so a genuinely
+        supported event this package does not know about keeps working.
+
     callback : callable, optional
         Function called when grid data changes. Receives AgGridReturn object.
         Requires key parameter to be set.
@@ -466,6 +474,16 @@ def AgGrid(
     update_on_was_explicit = update_on is not None
     if update_on is None:
         update_on = ["cellValueChanged", "selectionChanged", "filterChanged", "sortChanged"]
+    elif isinstance(update_on, str):
+        # A single event name reads naturally as a bare string, and everything
+        # downstream only iterates, so a string used to decay into a list of its
+        # characters: dedupe_update_on("selectionChanged") returned
+        # ['s', 'e', 'l', 'c', ...] and the frontend attached a listener per
+        # letter, none of which could ever fire. Accepted rather than warned
+        # about, because wrapping it is unambiguously what the caller meant.
+        # validate_update_on keeps its own guard for callers reaching it
+        # directly, where there is no chance to normalize first.
+        update_on = [update_on]
 
     manual_update = False
     if update_mode:
@@ -499,6 +517,12 @@ def AgGrid(
     # twice per event. update_mode re-adds the same defaults update_on already
     # carries, so MODEL_CHANGED, VALUE_CHANGED and GRID_CHANGED all did this.
     update_on = dedupe_update_on(update_on)
+
+    # Runs after the dedupe so a name contributed by both update_on and
+    # update_mode is reported once rather than once per occurrence. Every event
+    # parse_update_mode can add is a real grid event, so the merge above cannot
+    # be the source of a warning.
+    validate_update_on(update_on)
 
     # None is the "caller said nothing" sentinel used above to tell an explicit
     # show_toolbar=False from the default. The frontend reads a missing value as

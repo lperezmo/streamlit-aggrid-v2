@@ -18,7 +18,41 @@ jobs:
       - uses: actions/checkout@v6
       - uses: astral-sh/ruff-action@v3
         with:
-          args: check src test
+          args: check src test scripts
+
+  # src/st_aggrid/_event_catalog.py is generated from the bundled AG Grid types
+  # and committed, so bumping ag-grid-community without regenerating would ship
+  # a catalog that no longer matches the grid. What trips this is the lockfile
+  # rather than package.json, because npm ci installs from the lockfile.
+  #
+  # Not hypothetical: the scraped JSON snapshot this generator replaced drifted
+  # 20 events behind, so update_on would have warned about event names that were
+  # perfectly valid. --check re-parses the types and fails here instead.
+  catalog:
+    name: Event catalog fresh (run scripts/gen_event_catalog.py if red)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      # No `npm run build` here, unlike the other jobs: the generator only reads
+      # the .d.ts files and package.json of the installed ag-grid-community, so
+      # the bundle is irrelevant and building it would triple the job time.
+      # --omit=dev is enough because ag-grid-community is a regular dependency,
+      # and the published tarball carries dist/types, so nothing has to compile.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
+      - run: npm ci --omit=dev
+        working-directory: src/st_aggrid/frontend
+
+      # The generator imports stdlib only, so a bare interpreter is the whole
+      # dependency list: no uv, no uv sync, no wheel build.
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.13' }
+      - run: python scripts/gen_event_catalog.py --check
 
   # Browser-less registration guard across every supported Streamlit version.
   # Catches API drift like isolate_styles moving between the registration call

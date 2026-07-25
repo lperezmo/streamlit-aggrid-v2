@@ -1,12 +1,21 @@
+import difflib
 import json
 import math
 import os
+import warnings
 from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
 
 import pandas as pd
 
+from st_aggrid._event_catalog import (
+    AG_GRID_VERSION,
+    COLUMN_ONLY_EVENTS,
+    GRID_EVENTS,
+    INTERNAL_EVENTS,
+    ROW_NODE_ONLY_EVENTS,
+)
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 from st_aggrid.shared import GridUpdateMode, JsCode, walk_gridOptions
 
@@ -216,6 +225,153 @@ def dedupe_update_on(update_on):
             order.append(name)
         specs[name] = event
     return [specs[name] for name in order]
+
+
+# difflib similarity a name must reach before it is offered as "did you mean".
+# The library default of 0.6 is too loose for a catalog of 107 names built from
+# the same handful of words: it answers "dataChange" with "sortChanged" and
+# "click" with "cellClicked", suggestions that share a suffix and nothing else
+# and send the reader off to fix the wrong thing. 0.75 still catches every
+# realistic way of misspelling a name that exists (a dropped trailing "d" as in
+# "selectionChange", wrong case as in "selectionchanged", the on-prefixed form
+# "onSelectionChanged" that the React props use) while refusing to guess for
+# names that were never AG Grid events at all.
+_SUGGESTION_CUTOFF = 0.75
+
+# warnings.warn counts frames outward from the warn() call: 1 is this module, 2
+# is AgGrid, 3 is the app line that called AgGrid. Only 3 is useful, because the
+# message quotes an event name the app author typed and the fix is on their
+# line; the internal frames say nothing they can act on.
+#
+# warnings.warn rather than a logger call because this reports caller error, so
+# it should be filterable and escalatable to an exception with -W error. That
+# brings the standard once-per-location cadence with it, which is the right
+# trade: the first run after a typo shows it, and a diagnostic repeated on every
+# Streamlit rerun forever would train people to ignore it.
+_CALLER_STACKLEVEL = 3
+
+
+def _suggest_event_name(name):
+    """The event the caller probably meant, or None when guessing would mislead.
+
+    Two things happen before difflib is consulted at all. React's props spell
+    these events as onSelectionChanged, so an "on" prefix is stripped and tried
+    as an exact match: "onRedoEnded" then resolves to "redoEnded" outright.
+    Fuzzy matching gets that pair wrong, because "onRedoEnded" scores an
+    identical 0.8 against both "redoEnded" and "undoEnded" and difflib breaks
+    the tie lexicographically, answering "undoEnded" with total confidence.
+
+    That tie is also why an ambiguous best match yields no suggestion. Naming
+    one of two equally close events is a coin flip dressed up as advice, and
+    sending someone to fix an event they never wrote is worse than saying
+    nothing, which is the same reason the similarity cutoff is not looser.
+    """
+    if name.startswith("on") and len(name) > 2:
+        unprefixed = name[2].lower() + name[3:]
+        if unprefixed in GRID_EVENTS:
+            return unprefixed
+
+    # Sorted, not the frozenset itself: string hashing is salted per process, so
+    # set iteration order changes between runs, and difflib's tie-breaking would
+    # make an ambiguous suggestion vary from one run to the next.
+    matches = difflib.get_close_matches(
+        name, sorted(GRID_EVENTS), n=2, cutoff=_SUGGESTION_CUTOFF
+    )
+    if not matches:
+        return None
+    if len(matches) > 1:
+        ratios = [difflib.SequenceMatcher(None, name, m).ratio() for m in matches]
+        if ratios[0] == ratios[1]:
+            return None
+    return matches[0]
+
+
+def validate_update_on(update_on):
+    """Warn about ``update_on`` entries that can never fire.
+
+    ``update_on`` names AG Grid events verbatim, and the frontend hands each one
+    to ``api.addEventListener``, which accepts any string and silently keeps a
+    listener for an event that will never be dispatched. A misspelling therefore
+    produces a grid that simply does not update, which from the app author's
+    side looks exactly like a broken component. This is the likely first mistake
+    with the parameter: the ``GridUpdateMode`` flags it replaces were enum
+    members, so the same typo used to be a NameError at the call site.
+
+    Three kinds of entry cannot be relied on: names that are not AG Grid events
+    at all, names that are real events dispatched on a ``Column`` or a
+    ``RowNode`` rather than on the grid api (the only object ``update_on`` can
+    attach to), and names AG Grid marks internal. Each gets its own message,
+    because telling someone that ``widthChanged`` "is not an AG Grid event"
+    would be plainly false and would send them looking for a typo that is not
+    there.
+
+    Nothing here raises, deliberately. The catalog is generated from the
+    bundled AG Grid version and can lag a newer one, so treating an unlisted
+    name as fatal would break a grid whose event is genuinely supported, which
+    is a worse failure than the silent typo this replaces.
+    """
+    # A bare string is iterable, so it would otherwise be validated one
+    # character at a time: update_on="selectionChanged" produced thirteen
+    # warnings about events named 's', 'e', 'l' and so on, none of which said
+    # the one useful thing. AgGrid wraps a string before calling this, so a
+    # reader here is calling the function directly.
+    if isinstance(update_on, str):
+        warnings.warn(
+            f"update_on should be a list of event names, not the bare string "
+            f"{update_on!r}. A string is iterated character by character, so "
+            "each letter would be treated as its own event name. Use "
+            f"update_on=[{update_on!r}].",
+            UserWarning,
+            stacklevel=_CALLER_STACKLEVEL,
+        )
+        update_on = [update_on]
+
+    for event in update_on:
+        # update_event_name indexes [0], so an empty tuple would raise here.
+        # Validation must never be the thing that turns a malformed update_on
+        # into a traceback; the entry is left to the code that consumes it.
+        if isinstance(event, (tuple, list)) and not event:
+            continue
+        name = update_event_name(event)
+        # Anything that is not a string cannot be an event name, and some of
+        # what update_event_name hands back (a dict from a nested list, say) is
+        # not even hashable, so this guard also keeps the set lookups safe.
+        if not isinstance(name, str) or name in GRID_EVENTS:
+            continue
+
+        if name in COLUMN_ONLY_EVENTS or name in ROW_NODE_ONLY_EVENTS:
+            owner = "a Column instance" if name in COLUMN_ONLY_EVENTS else "a row node"
+            warnings.warn(
+                f"update_on entry {name!r} is a real ag-grid-community "
+                f"{AG_GRID_VERSION} event, but it is dispatched on {owner} "
+                "rather than on the grid, so it cannot be used with update_on "
+                "and the grid will never update because of it.",
+                UserWarning,
+                stacklevel=_CALLER_STACKLEVEL,
+            )
+            continue
+
+        if name in INTERNAL_EVENTS:
+            warnings.warn(
+                f"update_on entry {name!r} is an internal ag-grid-community "
+                f"{AG_GRID_VERSION} event. It may well fire today, but AG Grid "
+                "documents internal events as removable without notice and does "
+                "not support listening for them, so a grid built on it can stop "
+                "updating on any AG Grid upgrade. Prefer a public event.",
+                UserWarning,
+                stacklevel=_CALLER_STACKLEVEL,
+            )
+            continue
+
+        message = (
+            f"update_on entry {name!r} is not an AG Grid event (checked against "
+            f"ag-grid-community {AG_GRID_VERSION}), so update_on will never "
+            "fire for it and the grid will not update."
+        )
+        suggestion = _suggest_event_name(name)
+        if suggestion:
+            message += f" Did you mean {suggestion!r}?"
+        warnings.warn(message, UserWarning, stacklevel=_CALLER_STACKLEVEL)
 
 
 def parse_update_mode(update_mode: GridUpdateMode, update_on=None):
