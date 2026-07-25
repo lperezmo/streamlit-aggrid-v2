@@ -109,8 +109,16 @@ def _parse_data_and_grid_options(
             # be rendered literally in cells, quick search and CSV export.
             for c, d in data.dtypes.items():
                 if d.kind == "M":
-                    data[c] = data[c].apply(
-                        lambda s: None if pd.isna(s) else s.isoformat()
+                    # Built as an explicit object Series rather than with
+                    # .apply(). pandas 3.0 infers its new `str` dtype from a
+                    # result that is all strings, and None lands in a str
+                    # column as nan, which is not valid JSON and reaches the
+                    # browser as NaN. Naming the dtype keeps the null a null
+                    # on both pandas 2 and 3.
+                    data[c] = pd.Series(
+                        [None if pd.isna(s) else s.isoformat() for s in data[c]],
+                        index=data.index,
+                        dtype=object,
                     )
 
         # if there is data and no grid options, create grid options from the data
