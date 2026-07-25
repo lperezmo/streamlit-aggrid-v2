@@ -17,7 +17,7 @@ import warnings
 import pandas as pd
 import pytest
 
-from st_aggrid import JsCode
+from st_aggrid import GridUpdateMode, JsCode
 
 # _AGGRID_MODULE, not ``import st_aggrid.AgGrid``: the package __init__ rebinds
 # that name to the function, so the plain import hands back a callable with no
@@ -439,6 +439,41 @@ def test_manual_update_mode_honors_explicit_update_on(monkeypatch):
     assert call.component_data["manual_update"] is True
 
 
+def test_manual_update_mode_composed_with_another_flag(monkeypatch):
+    """GridUpdateMode is a Flag, so MANUAL composes.
+
+    The mode was matched with ``==``, which read MANUAL | VALUE_CHANGED as
+    "not MANUAL": no update button was rendered, the toolbar was not forced
+    on, and parse_update_mode dropped the MANUAL bit, leaving a grid with no
+    manual return path at all. Both halves of the flag have to be honored.
+    """
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="m8",
+        update_mode=GridUpdateMode.MANUAL | GridUpdateMode.VALUE_CHANGED,
+    )
+
+    assert call.component_data["manual_update"] is True, (
+        "a composed MANUAL flag rendered no update button"
+    )
+    assert call.component_data["show_toolbar"] is True
+    # The other bit still contributes its event, and the defaults MANUAL
+    # clears do not come back.
+    assert call.component_data["update_on"] == ["cellValueChanged"]
+
+
+def test_bare_manual_update_mode_adds_no_events_through_the_flag_path(monkeypatch):
+    """parse_update_mode now runs for MANUAL too. MANUAL alone maps to no
+    events, so the mode stays exclusive."""
+    call = render_grid(
+        monkeypatch, DF.copy(), key="m9", update_mode=GridUpdateMode.MANUAL
+    )
+
+    assert call.component_data["update_on"] == []
+    assert call.component_data["manual_update"] is True
+
+
 def test_non_manual_update_mode_keeps_the_default_events(monkeypatch):
     """Only MANUAL clears the defaults. Every other mode still adds its own
     events on top of them."""
@@ -544,6 +579,32 @@ def test_manual_update_mode_warns_when_it_overrides_show_toolbar(monkeypatch, ca
     assert call.component_data["show_toolbar"] is True
     messages = [r.getMessage() for r in caplog.records]
     assert any("show_toolbar" in m and "MANUAL" in m for m in messages), messages
+    # The remedy the message names has to be one that exists. It used to offer
+    # "pass update_on explicitly, if the toolbar has to stay hidden", but
+    # show_toolbar is forced to True regardless of update_on, so following the
+    # advice changed nothing.
+    conflict = next(m for m in messages if "show_toolbar" in m)
+    assert "update_on" not in conflict or "drop update_mode=MANUAL" in conflict
+
+
+def test_manual_toolbar_warning_fires_once_not_on_every_rerun(monkeypatch, caplog):
+    """A Streamlit script reruns on every interaction. An undeduped warning at
+    call time repeats for the lifetime of the app, which is how a real
+    diagnostic becomes noise the reader learns to scroll past."""
+    with caplog.at_level("WARNING", logger="st_aggrid.AgGrid"):
+        for run in ("m5a", "m5b", "m5c"):
+            render_grid(
+                monkeypatch,
+                DF.copy(),
+                key=run,
+                update_mode="MANUAL",
+                show_toolbar=False,
+            )
+
+    conflicts = [r for r in caplog.records if "show_toolbar" in r.getMessage()]
+    assert len(conflicts) == 1, (
+        f"the toolbar override warned {len(conflicts)} times across 3 reruns"
+    )
 
 
 def test_manual_update_mode_does_not_warn_about_the_default_toolbar(monkeypatch, caplog):

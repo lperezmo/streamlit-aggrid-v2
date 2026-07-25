@@ -520,28 +520,43 @@ def AgGrid(
     manual_update = False
     if update_mode:
         update_on = list(update_on)
-        if update_mode == GridUpdateMode.MANUAL:
+        # Bitwise, because GridUpdateMode is a Flag and MANUAL composes with
+        # the rest. An equality test read `MANUAL | VALUE_CHANGED` as "not
+        # MANUAL": no update button was rendered, the toolbar was not forced
+        # on, and parse_update_mode dropped the MANUAL bit on the floor, so the
+        # grid ended up with no manual return path at all.
+        if update_mode & GridUpdateMode.MANUAL:
             manual_update = True
-            # MANUAL is exclusive: the update button is the only return path.
-            # The default event list would otherwise keep sending data back on
-            # every edit, selection, filter and sort, which defeats the mode.
-            # An explicit update_on is honored, so callers who want extra
-            # triggers alongside the button can still ask for them.
+            # MANUAL on its own is exclusive: the update button is the only
+            # return path. The default event list would otherwise keep sending
+            # data back on every edit, selection, filter and sort, which
+            # defeats the mode. Callers who want extra triggers alongside the
+            # button ask for them either by passing update_on explicitly or by
+            # setting the other bits of the flag, and both are honored: the
+            # first survives this branch, the second comes back from
+            # parse_update_mode below.
             if not update_on_was_explicit:
                 update_on = []
             # The manual update button lives inside the toolbar, so a hidden
             # toolbar would leave a manual-update grid with no way to update.
             if show_toolbar is False:
-                _LOGGER.warning(
-                    "show_toolbar=False conflicts with update_mode=MANUAL and is "
-                    "being overridden to True: the manual update button lives in "
-                    "the toolbar, so hiding it would leave the grid with no way "
-                    "to return data. Drop update_mode=MANUAL, or pass update_on "
-                    "explicitly, if the toolbar has to stay hidden."
-                )
+                warning_key = "manual_update_overrides_show_toolbar"
+                if warning_key not in _shown_once_warnings:
+                    _LOGGER.warning(
+                        "show_toolbar=False conflicts with update_mode=MANUAL and is "
+                        "being overridden to True: the manual update button lives in "
+                        "the toolbar, so hiding it would leave the grid with no way "
+                        "to return data. To keep the toolbar hidden, drop "
+                        "update_mode=MANUAL and use update_on to choose which events "
+                        "return data."
+                    )
+                    _shown_once_warnings.add(warning_key)
             show_toolbar = True
-        else:
-            update_on.extend(parse_update_mode(update_mode))
+
+        # Runs for MANUAL too. parse_update_mode returns [] for a bare MANUAL,
+        # and the events of whatever else is set when MANUAL is one bit of a
+        # composed flag.
+        update_on.extend(parse_update_mode(update_mode))
 
     # One listener per event. The frontend attaches a fresh closure for every
     # entry and AG Grid keys listeners by function identity, so a duplicated
