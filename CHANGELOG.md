@@ -1,6 +1,583 @@
 # CHANGELOG
 
 
+## v0.3.0 (2026-07-25)
+
+### Bug Fixes
+
+- Accept the four retired theme names with a deprecation warning
+  ([`bb42ea0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/bb42ea078b42b009429c03bfe3778d80f7e9e57c))
+
+- Attach one grid listener per update_on event
+  ([`f44fbcc`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/f44fbcc721b63397e92755702b5745ee43698c3d))
+
+parse_update_mode deduped only within the list it built, and AgGrid then appended that list onto the
+  already-populated update_on defaults. Every update_mode that implies a default event therefore
+  listed it twice: MODEL_CHANGED, VALUE_CHANGED and GRID_CHANGED all did.
+
+That is not cosmetic. AgGrid.tsx builds a fresh closure per update_on entry and AG Grid's
+  addEventListener stores listeners in a Set keyed by function identity, so both closures stay live
+  and both fire. The full collector walk and the Streamlit state write ran twice for every such
+  event.
+
+Dedupe keys on the event name, since entries are either a plain name or an (event, debounce_ms)
+  tuple and the two forms describe the same listener. Order follows first appearance so a caller's
+  own ordering survives, and the spec kept is the last one seen: a bare "columnResized" from the
+  caller loses to the ("columnResized", 300) that GridUpdateMode.COLUMN_RESIZED adds, because
+  dropping the debounce would be the more surprising outcome.
+
+- Correct columns_state, JSON serialization and error handling defects
+  ([`dfd2b3c`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/dfd2b3c3d334a83580d55505e5d4efd00de8c14b))
+
+Verified review findings on the installable package:
+
+- columns_state was only applied from componentDidUpdate when it differed from prevProps, so it
+  never applied on mount nor on reruns with an unchanged saved state. It is now applied in
+  onGridReady as well. - use_json_serialization=True moved the frame into gridOptions.rowData and
+  nulled data, which made AgGridReturn.data return a JSON string instead of a DataFrame. AgGrid now
+  keeps the frame and hands it to the response. - componentDidUpdate pushed the cloned gridOptions
+  (still carrying rowData as a raw JSON string under JSON serialization) straight into
+  updateGridOptions, breaking the grid. rowData is now excluded there. - Error re-wrapping rebuilt
+  the exception with type(ex)(*args), which garbled StreamlitDuplicateElementId, turned
+  json.JSONDecodeError into a TypeError and raised IndexError on empty args. The original exception
+  and traceback now survive, with the hint attached as a note. - walk_gridOptions indexed lists by
+  element, crashing on nested lists and silently skipping JsCode objects stored directly in a list.
+  - GridOptionsBuilder.build() mutated its internal columnDefs mapping into a list, so a second
+  build() raised AttributeError. It now returns a copy. - AgGridReturn.data raised "No objects to
+  concatenate" when the grid returned zero nodes. - Datetime columns rendered the literal string
+  "NaT" for missing values. - theme= documented themes that do not exist and accepted any string,
+  falling back to balham silently. String themes are validated against AgGridTheme and StAggridTheme
+  always sets themeName, so a custom theme no longer discards its withParams/withParts. -
+  update_mode=MANUAL now forces show_toolbar on, since the update button lives in the toolbar and
+  the grid is otherwise unusable. - AgGridReturn.keys() disagreed with __iter__/__len__, so
+  dict(zip(keys, values)) dropped entries. Raw response keys remain reachable via __getitem__ and
+  .grid_response. - fit_columns_on_grid_load, pro_assets and debug are popped before
+  GridOptionsBuilder.from_dataframe, which warned they were not valid gridOptions even though all
+  three are honored. - conversion_errors='ignore' is implemented locally instead of being passed to
+  pandas, which deprecated it and removes it in pandas 3.0. - collectors.factory.determine_collector
+  raised "Unsupported DataReturnMode" for DataReturnMode.CUSTOM. - Deleted the unreferenced frontend
+  constants module (eventDataWhiteList was replaced by LegacyCollector.filterSerializableEventData).
+
+- Detach every level of the GridOptionsBuilder.build result
+  ([`ad1d80d`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/ad1d80ded5207166b108c20ec5c76a1132370c20))
+
+build() returned a shallow copy while its docstring promised independence. defaultColDef and every
+  entry of columnDefs were the same dict objects in the builder and in every build, and the existing
+  detachment test only checked the top level, so it passed against the bug.
+
+This is not theoretical. AgGrid(..., allow_unsafe_jscode=True) rewrites JsCode values into
+  ::JSCODE:: strings in place through walk_gridOptions, so the rewrite reached the builder's own
+  colDefs and the next build came out already flattened: the second grid got a plain string where
+  the frontend expects marker-wrapped code it re-parses.
+
+The copy walks dicts, lists and tuples and shares every leaf. copy.deepcopy was not used on purpose:
+  it would duplicate JsCode objects and break identity for callers holding a reference to what they
+  passed in. Only the containers are ever mutated, so only they need to be new. defaultdicts are
+  rebuilt with their factory so the built options keep auto-vivifying.
+
+- Document the breaking changes and cut them as a 0.x minor
+  ([`c195736`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/c1957368a8f8d59ea99579f3ee9e6185be2dcd39))
+
+- Give DataReturnMode.MINIMAL a genuinely lean frontend collector
+  ([`1e4a2d0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/1e4a2d001877d4ac20f5ddb7fe67f2655718a2e9))
+
+MINIMAL routed to LegacyCollector on the TypeScript side, so the wire payload was the full legacy
+  one: an object per row carrying id, rowIndex, group, isSelected, parentPath and the internal
+  ::auto_unique_id:: column, plus the whole grid state, the whole column state, the original dtypes
+  and the filtered event data, produced by three separate walks of the grid. The mode advertised the
+  lightest payload and delivered the heaviest processing.
+
+MinimalCollector walks the grid once with forEachNodeAfterFilterAndSort and sends {data,
+  selectedRows, eventTrigger}: the displayed row values in display order, internal columns stripped.
+  On a 200 row by 4 column grid with 10 percent selected that is 19598 bytes against 43212, a 55
+  percent reduction, and it grows with column count.
+
+The shape matches what MinimalResponse on the Python side already reads, so no Python contract
+  changes. As a side effect MinimalResponse.data and .selected_rows return real rows instead of
+  None, which is what they were written for.
+
+- Hash and type the frame that JSON serialization puts on the wire
+  ([`95eb230`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/95eb23018811700eb0d357d976125493938b11d8))
+
+use_json_serialization=True moves the DataFrame into gridOptions["rowData"] and sets the local
+  `data` to None. Two things downstream still read that local and quietly degraded as a result.
+
+data_hash was computed from `data`, so it was always "". The frontend only refreshes rows when
+  data_hash changes under the default server_sync_strategy="client_wins", so the grid stayed pinned
+  to the rows it mounted with and never picked up new server data.
+
+try_to_convert_back_to_original_types was cleared by the isinstance(data, pd.DataFrame) guard, which
+  withheld frame_dtypes from LegacyCollector. AgGridReturn only converts column types when
+  frame_dtypes is set, so the returned DataFrame came back entirely object dtype while
+  use_json_serialization="auto" returned Int64 and float64 columns for the same input.
+
+Both now go through sent_frame, the frame that was actually handed to the grid in either
+  serialization mode.
+
+- Honor conversion_errors on integer columns
+  ([`9c1b1bd`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/9c1b1bd5a6ecf4728f8f525f437d1fdf2af6560b))
+
+_convert_with_error_policy was wired into the float and datetime branches only. The integer branch
+  called _convert_to_integer, which hardcoded errors="coerce", so conversion_errors was a no-op for
+  every integer column: "ignore" turned an uncoercible cell into <NA> instead of leaving the column
+  as it came back, and "raise" never raised.
+
+_convert_to_integer now takes the pandas policy from the caller, and the integer branch goes through
+  the same error policy helper as the other kinds. The "coerce" default is unchanged.
+
+- Honor every bit of a composed update_mode flag
+  ([`81a7dd0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/81a7dd004305f3ef5a100ec5c7c9f90f714ffe3d))
+
+- Keep DataReturnMode.MINIMAL from changing types and losing tree rows
+  ([`b191488`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/b19148844218e896ca4d2c06bdb4269efdf6c4ae))
+
+- Keep missing datetimes null on pandas 3
+  ([`7f46206`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/7f4620687a3b2030cef38045b0f60af0c0c6b6c3))
+
+- Keep the exception type and the hint on Python 3.10
+  ([`ab33f68`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/ab33f68af77e522acfe3c949642a8df8c3f50d02))
+
+_reraise_with_hint used BaseException.add_note, which is 3.11+. On the declared 3.10 floor the
+  getattr probe returned None and the fallback rebuilt the error as a RuntimeError, so an exception
+  with empty args or a non-string first arg lost its type: `except StreamlitDuplicateElementId`
+  stopped catching the duplicate-key error the hint exists to explain.
+
+The add_note branch was wrong on every version anyway. This function's own docstring says Streamlit
+  renders the message and the traceback and never __notes__, so that branch filed the hint exactly
+  where nobody can read it.
+
+Now every branch mutates args in place: the hint alone when there are no args, prepended when the
+  first arg is a string, appended otherwise so a non-string first arg stays intact for callers that
+  read args[0] while str() of the multi-arg tuple still carries the hint to the browser. A repeat
+  pass is a no-op, so an exception crossing two boundaries does not accumulate suffixes.
+
+Verified on real 3.10.18 and 3.13 across five exception shapes, including JSONDecodeError and a
+  two-argument constructor: type preserved and hint in str() in all ten cases.
+
+Two tests asserted on __notes__ and so encoded the unrenderable behavior; they now assert on str().
+  CI ran only 3.13, which is why none of this was caught, so the browser-less suite now also runs on
+  3.10.
+
+- Let an explicit update_on debounce win over the one update_mode implies
+  ([`1c038df`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/1c038df558b5d8a2d85b15c4adc119bd426def1f))
+
+- Make update_mode MANUAL the only return path again
+  ([`694c094`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/694c094ae8f33798b2c06e61183af2a6b91ac956))
+
+update_mode=GridUpdateMode.MANUAL still attached the default update_on events (cellValueChanged,
+  selectionChanged, filterChanged, sortChanged), so the grid kept returning data on every edit,
+  selection, filter and sort and the update button was just one more trigger among several. In v1
+  MANUAL was exclusive.
+
+MANUAL now clears the default event list, leaving the toolbar button as the only way the grid
+  returns data. An update_on passed by the caller is still honored verbatim, so anyone who wants
+  extra triggers alongside the button keeps them.
+
+Behavior change, deliberate: grids using update_mode="MANUAL" without an explicit update_on will
+  stop rerunning Streamlit on cell edits and selection changes. Pass update_on to restore the old
+  set. Documented on the update_mode and update_on docstrings.
+
+- Move gridOptions rowData into data under use_json_serialization
+  ([`1d127f4`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/1d127f4fef0031a96d7dce3b64d25f24bdce5eb5))
+
+The parser refused to move gridOptions.rowData into the data parameter whenever
+  use_json_serialization was True. A list of record dicts therefore stayed on gridOptions.rowData,
+  and the frontend's parseData only unwraps rowData when it is a JSON string: a list fell through to
+  [] and the grid rendered empty.
+
+The same skip left the data local at None, so no frame was hashed (data_hash stayed ""), no
+  ::auto_unique_id:: column was added (so the frontend could not derive getRowId), and the frame
+  never reached the response object.
+
+Moving rowData for every serialization mode also means the frame is re-serialized to a JSON string
+  by the caller, which is the form parseData expects and the form the frontend already handles for
+  the data= argument.
+
+- Put the serialization hint back in the visible error message
+  ([`dfa6074`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/dfa6074a30193b09e1b32c35bc6ae1277453ed06))
+
+Attaching the hint with add_note() preserved the exception type and traceback but made the hint
+  invisible in the browser: Streamlit renders str(exception) and traceback.format_list(frames), and
+  neither includes __notes__, so the allow_unsafe_jscode guidance survived only in the server
+  console. Mutating args in place still skips the constructor, so the type and traceback are kept,
+  while the hint lands in str(exception) where Streamlit will actually show it. Exceptions with
+  empty args or a non-string args[0] fall back to the note.
+
+- Remove em dashes from the PyPI summary and shipped frontend config
+  ([`bdc6143`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/bdc6143f13d602d4e640f9029d4818123573738c))
+
+The project description is published as the package summary on PyPI, and vite.config.ts ships inside
+  the wheel. Both violated the no-em-dash rule.
+
+- Report a selected row that a filter hides under MINIMAL
+  ([`65c3db0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/65c3db030392894e0c0e6d1c19a4deb58f81d612))
+
+- Return the input frame from DataReturnMode.MINIMAL on first render
+  ([`0752138`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/07521380362e2167ce386181fdead1a42a86c757))
+
+MinimalCollector.create_initial_response ignored original_data and handed back a bare
+  MinimalResponse, so .data was None until the frontend reported something. Every other
+  data_return_mode returns the input frame straight away.
+
+Combined with update_mode=MANUAL, which now attaches no update_on events at all, that meant .data
+  stayed None until the user clicked the toolbar button.
+
+A real response still wins, including an empty one: a grid that filtered every row away reports no
+  rows rather than falling back to the input.
+
+- Round-trip datetime columns and drop the deprecated copy keyword
+  ([`40e2504`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/40e250489922d03277cc25bcc2b00ddd4daa287c))
+
+- Satisfy the ruff version CI actually runs
+  ([`32a6199`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/32a61993b871bdff2245b6f6c9a9fa63f564b2c8))
+
+- Stop AgGrid writing into the caller's gridOptions dict
+  ([`faee54e`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/faee54e6994ca990f209dc449f4099476a495e49))
+
+- Warn when update_mode MANUAL overrides show_toolbar
+  ([`278e8d9`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/278e8d96673b494230d2cfb6921ad45b0dc4d737))
+
+An explicit show_toolbar=False was discarded without a word under update_mode=MANUAL. The override
+  itself has to stay: the manual update button lives in the toolbar, and hiding the toolbar would
+  leave a MANUAL grid with no return path at all now that MANUAL attaches no update_on events. But a
+  silently ignored argument is a bug report waiting to happen, so the conflict is logged through the
+  module logger and the message says what to do instead.
+
+show_toolbar now defaults to None rather than False so that an explicit False can be told apart from
+  the default. Warning on the default would fire for every MANUAL grid and say nothing about the
+  caller's intent. None is resolved to False before the payload goes out, because the frontend reads
+  a missing show_toolbar as true.
+
+### Chores
+
+- Add browser-less regression tests for the Python layer
+  ([`4d44a54`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/4d44a54f4f54e7500b595f4830a02d36f838c602))
+
+Adds test/grid_stub.py, which swaps out the one Streamlit-dependent step in AgGrid() (the
+  _get_component_func() indirection) so a test can drive the whole Python layer in milliseconds: it
+  can assert on the exact component_data payload the frontend would receive and feed a
+  frontend-shaped reply back in to assert on the AgGridReturn that comes out. AppTest is not usable
+  here because it never runs CCv2 component discovery.
+
+Covers, with a verified fail-before-pass-after for each:
+
+- data_hash was "" under use_json_serialization=True, so client_wins never refreshed rows after
+  mount - the same mode returned an all-object DataFrame because frame_dtypes was withheld, and
+  returned .data as a JSON string instead of a DataFrame - update_mode=MANUAL kept the default
+  update_on events, so the update button was not the only return path, and did not force the toolbar
+  on - .data raised "No objects to concatenate" on a zero-node grid - the error re-wrap changed the
+  exception type, garbled the message and raised IndexError on empty args, and had to put the hint
+  in str(exception) because Streamlit never renders __notes__ - walk_gridOptions indexed lists by
+  element, crashing on nested lists and skipping JsCode stored directly in a list -
+  GridOptionsBuilder.build() was not idempotent - AgGridReturn.keys() disagreed with
+  __iter__/__len__ - datetime columns serialized missing values as the literal string NaT -
+  conversion_errors='ignore' was forwarded to pandas, which removes it in 3.0 - determine_collector
+  rejected DataReturnMode.CUSTOM - unknown string themes fell through to balham silently, and a
+  custom theme built without a base lost its withParams/withParts
+
+The three tests that lock the boundaries of the MANUAL change (an explicit update_on is honored,
+  other modes keep their defaults) cannot fail against the old code by construction, so they were
+  verified against mutations of the fix instead: making MANUAL always clear update_on, and making
+  every update_mode clear it.
+
+- Adopt ruff 0.16 default rule set
+  ([`41cbd40`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/41cbd40eb3e7907d5679e119ef2caf25922dfd2e))
+
+Drop the stopgap select = ["E4", "E7", "E9", "F"], which pinned the suite to ruff pre-0.16 defaults
+  so CI would stop failing on unchanged code. The rule set is now ruff 0.16 defaults (413 rules),
+  and the dev floor moves to ruff>=0.16 so a local run and CI agree on what "default" means.
+
+Three rules are ignored with the reason recorded in the config: BLE001 (broad excepts are the
+  deliberate shape of the error boundaries), TRY004 (the entry point has raised ValueError for bad
+  argument types since v1) and PYI034 (typing.Self is 3.11+, the supported floor is 3.10). N999 is
+  ignored for the two PascalCase modules that are public import paths.
+
+- Apply ruff autofixes for the 0.16 default rules
+  ([`4bbfda0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/4bbfda081343d6cac98802f09d85ec71b8d9a25e))
+
+All of these are ruff's own safe fixes, reviewed one by one: import sorting (I001), PEP 585/604
+  annotations (UP006/UP007/UP035/UP045, all valid on the 3.10 floor), the placeholder `pass` after a
+  docstring (PIE790), sorted __all__ (RUF022), str.removeprefix (FURB188) and one noqa: F841 that
+  ruff 0.16 reports as unused (RUF100).
+
+isort gets known-local-folder for the sibling modules the examples and tests import by path, so they
+  group below st_aggrid instead of above it.
+
+No behavior changes: the annotation rewrites are equivalent at runtime on 3.10+, removing `pass`
+  after a docstring leaves the docstring as the body, and removeprefix on "ROOT_NODE_ID." matches
+  the slice it replaces.
+
+- Bump demo app requirement to v0.2.7
+  ([`3090d9a`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/3090d9a483517ad084b83085b0e31a1b998ca66c))
+
+- Bump vulnerable frontend transitives to clear npm audit
+  ([`15e6bb0`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/15e6bb0a1ed6c421f08d9d4d76ee11d2be6436bc))
+
+npm audit reported 2 high advisories, both in build tooling only:
+
+- brace-expansion 5.0.6 -> 5.0.8 (rimraf > glob > minimatch) GHSA-3jxr-9vmj-r5cp DoS via
+  exponential-time brace expansion GHSA-mh99-v99m-4gvg DoS via unbounded expansion length - postcss
+  8.5.17 -> 8.5.23 (vite) GHSA-r28c-9q8g-f849 path traversal via sourceMappingURL auto-loading -
+  nanoid 3.3.15 -> 3.3.16 (pulled in by the postcss bump)
+
+Both packages are dev dependencies used at build time and neither is reachable from the shipped
+  browser bundle, so users of the published wheel were never exposed. Lockfile only: package.json
+  ranges already allowed the fixed versions, so no overrides and no direct dependency bumps were
+  needed. Build output is byte identical before and after.
+
+npm audit: 2 high -> 0 vulnerabilities.
+
+- Bump vulnerable transitive pins in lockfiles
+  ([`df865ac`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/df865ace93c153b8a23f867b4f2f38c10c3a087b))
+
+Resolves 7 of the 8 open Dependabot alerts, all lockfile-only:
+
+- uv.lock: tornado 6.5.7 (CVE fixes, was < 6.5.6 range x3 plus the 6.5.6 follow-up) and soupsieve
+  2.8.4 (memory exhaustion, x2). Both are dev-environment transitives via streamlit and
+  beautifulsoup4; the published wheel pins neither. - frontend package-lock.json: @babel/core 7.29.7
+  (low, dev transitive).
+
+Not addressed: esbuild GHSA-g7r4-m6w7-qqqr (low; dev-server-only file read on Windows). The fix is
+  in esbuild 0.28.1, which vite 7 does not accept; it lands with a future vite 8 upgrade.
+
+Full suite green after the bumps: 31 passed.
+
+- Cap the ruff dev pin to the 0.16 line
+  ([`4c912cf`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/4c912cf46a269ded492b39ab6393c929aca2def5))
+
+The ruff action reads this constraint and installs the newest release satisfying it, so an unbounded
+  floor hands CI whatever ruff ships next. That is not hypothetical: 0.16.0 grew the default rule
+  set from 59 to 413 and turned this repo red on code nobody had touched. An upper bound makes the
+  next expansion a deliberate upgrade with its own triage pass instead of a surprise on an unrelated
+  PR.
+
+- Clear the remaining ruff findings in the package
+  ([`f1eeb23`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/f1eeb235fcb8074315200d3ca25ab4d423d1313f))
+
+Two changes are visible at runtime and are called out here rather than buried:
+
+- LOG015. The four warnings the package emitted went through the root logger, which installs a
+  handler on first use and produces a record with no module name, so a host app could neither
+  attribute nor silence them. They now go through a module logger (st_aggrid.AgGrid,
+  st_aggrid.AgGridReturn). Text is unchanged; anything that configures the root logger still sees
+  them by propagation. - TRY002. The four bare `raise Exception(...)` in the gridOptions/data
+  parsing path become ValueError, matching the neighboring raise for an invalid gridOptions type,
+  and now chain the original with `from`. The messages are byte for byte the same, and `except
+  Exception` still catches them. Code that catches ValueError around AgGrid() will now catch these
+  four cases too.
+
+The rest is behavior-preserving:
+
+- B023 on AgGridReturn is a false positive: _convert_with_error_policy calls the lambda
+  synchronously in the same iteration, so the loop variable cannot change before it runs. The dtype
+  is now bound as a default argument, which makes the capture explicit and silences the rule
+  honestly instead of ignoring it. - B006 on GridOptionsBuilder.configure_columns is not a live bug:
+  the default list is only membership-tested, never mutated or stored, so no state could leak
+  between calls. The default is an empty tuple now, which keeps every current call identical,
+  including passing None (still a TypeError, as before). - RUF013 makes three implicit Optionals
+  explicit, C408 turns dict()/list() calls into literals, and SIM102 collapses two nested ifs in the
+  collector factory.
+
+- Clear the remaining ruff findings in the test suite
+  ([`5322b29`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/5322b2980caf3453c9540b6b282e1a0ce016ae28))
+
+RUF059: the browser-less tests unpack three values out of _parse_data_and_grid_options and assert on
+  one or two of them. The ones a given test does not look at are now underscore-prefixed, which is
+  also a better description of what each test is actually checking.
+
+LOG002: e2e_utils named its logger after __file__, so the logger key was an absolute path and the
+  record could not be routed by module.
+
+Two findings are suppressed in place, each with the reason at the call site:
+
+- SIM115 on the subprocess stdout TemporaryFile. The file deliberately outlives start() so the child
+  can write to it; the class is the context manager that owns it and closes it in stop() and
+  terminate(). - SIM118 on `"data" in response.keys()`. That test exists to prove keys() does not
+  materialize the data properties, and Mapping.__contains__ goes through __getitem__, so the
+  suggested rewrite would test the opposite of what the test is for.
+
+- Cover the frontend-only fixes in the CCv2 e2e suite
+  ([`231b735`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/231b73552bc6ff06cf3465c6dcd87890bd9b078d))
+
+Four defects that are only observable in a browser now have guards, each verified by reverting the
+  fix, rebuilding the frontend and watching the test fail:
+
+- columns_state was applied only from componentDidUpdate when it differed from prevProps, so a saved
+  layout was never applied on mount. The fixture state reverses the column order and hides a column,
+  so the header row is unambiguous either way. - MINIMAL routed to the TypeScript LegacyCollector,
+  whose payload is {nodes, gridState, ...}, while MinimalResponse reads {data, selectedRows}. The
+  test selects a row and asserts both come back, and that the internal id column and the legacy node
+  metadata are absent. - a gridOptions change on a rerun pushed the cloned gridOptions into
+  updateGridOptions, and under use_json_serialization that object still carries rowData as a raw
+  JSON string. AG Grid 35.3 rejects the malformed value and keeps its rows, so the only visible
+  symptom is its "rowData must be an array" warning; the test watches the console for it, after
+  waiting on the applied rowHeight to prove componentDidUpdate ran at all. A row-count assertion
+  here passes against the unfixed code and would have been worthless. - update_mode=MANUAL is now
+  exclusive, so the manual grid no longer needs the update_on=["columnPinned"] workaround that
+  existed purely to neutralize the default events. Dropping it turns the existing button test into a
+  real guard (an edit that reaches Python before the click now means MANUAL is not exclusive) and a
+  second test covers selection, the other default trigger.
+
+Raises the Playwright expect timeout for these modules. Every assertion that waits on a Streamlit
+  rerun races a full round trip through a page of a dozen AG Grid instances behind a 6 MB bundle,
+  and the default 5s ceiling sits close enough to that to flake. It is a ceiling, not a delay.
+
+- Delete the dead CollectorFactory
+  ([`47dbf24`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/47dbf2428a0953d02782dde2e215353df9139536))
+
+- Describe DataReturnMode.MINIMAL by what it returns
+  ([`d58bfcd`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/d58bfcdfc8b97019dad96f6c12318ec9932053be))
+
+The data return example still called MINIMAL "only the grid's internal state". It returns the
+  displayed rows and the selection as plain records and no grid state at all.
+
+- Drop the broken options scraper and three unread JSON files
+  ([`00c7df1`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/00c7df1433054a2ba3807e9469bcc157ff5391c2))
+
+- Drop the root import shim and sweep em dashes outside the package
+  ([`38df04b`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/38df04b027e5bd0212b20ecd0ffe6a51f4f2dc3e))
+
+- streamlit_aggrid.py was never included in the wheel (pyproject ships only src/st_aggrid), so
+  `import streamlit_aggrid` only worked from a checkout. The README already documents st_aggrid as
+  the import path. - Replaced em dashes in README, CHANGELOG, skills, examples and tests, and
+  removed an emoji from test/grid_performance_1m.py.
+
+- Pin the ruff rule selection instead of inheriting defaults
+  ([`d62c02f`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/d62c02f1630bf1c69faf581f914fe2c982c3c33e))
+
+The lint job resolved the `ruff>=0.9.0` dev pin to the newest release, so the active rule set was
+  whatever the latest ruff defaulted to. Ruff 0.16.0 raised that default from 59 rules to 413 and
+  turned the job red on code nobody had touched: 143 findings against main, 144 against this branch.
+
+The delta of one is not a regression either. This branch adds two B023 and one BLE001 in the
+  conversion_errors='ignore' rewrite, and drops a RUF100 and a SIM118 with the deleted root shim.
+  The B023 pair is a false positive: _convert_with_error_policy calls the lambda synchronously in
+  the same iteration, so the loop variable it closes over cannot change first. The BLE001 is the
+  documented behavior, returning the column unchanged when a conversion fails.
+
+Selecting E4, E7, E9 and F pins the suite to ruff's pre-0.16 default, so it no longer moves when a
+  new ruff ships. Verified green under 0.16.0, the version CI installs, and under 0.15.13.
+
+Adopting the 0.16 defaults is worth doing, but it needs those 143 findings triaged on their own
+  rather than folded into an unrelated PR.
+
+- Relock for the ruff>=0.16 dev floor
+  ([`0d717f9`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/0d717f9c67ebbcfbad5ce3aa9e3f40f400d30874))
+
+uv.lock still pinned ruff 0.15.8 against the old >=0.9.0 specifier, which would resolve a ruff that
+  does not know the default rule set the config now relies on. The relock also picks up the package
+  version bump to 0.2.7 that the release commit wrote to pyproject.toml without touching the lock.
+
+- Remove dead frontend components and unused module-level names
+  ([`004fd7c`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/004fd7c6c1bc988493281e630f04336dafd486fd))
+
+- Rename the Smoke job to Python, which is what it runs
+  ([`f4151df`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/f4151df50900cfaa0b1d6fae387d486e6719ea5f))
+
+- Restore the released CHANGELOG entries
+  ([`a588890`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/a588890d547d668b63420bf8687bb2c109e191d6))
+
+38df04b rewrote the shipped v0.1.1 entry to drop an em dash. python-semantic-release regenerates
+  CHANGELOG.md on every release, so editing released history buys nothing and invites a conflict on
+  the next run. The no-em-dash rule applies to new content, which the generator writes from commit
+  messages.
+
+- Retire the five legacy CCv1 test files
+  ([`ef4f42f`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/ef4f42f588b5caaabcb18c69fdf69cb0b1e06cbb))
+
+They drove the CCv1 iframe DOM through frame_locator("iframe"), which the CCv2 component no longer
+  produces, so all five were unrunnable and had been sitting behind collect_ignore in conftest since
+  the v2 rewrite. Resolved per file, with the reasoning recorded in test_legacy_coverage.py:
+
+- test_grid_initialization.py: four of its six cases already exist as CCv2 tests in
+  test_ccv2_e2e.py. The two that did not (data from a .json file, data and gridOptions from separate
+  .json files) are ported to Python-level tests, since the file reading happens entirely in Python.
+  - test_grid_return.py: basic return and sorting are already covered. Checkbox selection, header
+  select-all and DataReturnMode.CUSTOM are browser-side and are ported to test_ccv2_legacy_port.py.
+  The grouped-data cases are dropped: row grouping is an AG Grid Enterprise feature and those tests
+  ran with enable_enterprise_modules=True against a grid with no license key. Its 30,000 row dummy
+  dataset was incidental and no assertion used it. - test_grid_data_render.py: what it was really
+  guarding is the Python serialization and hashing of unhashable cell values, which is ported as
+  parameterized tests over lists, sets, dicts and empty containers in both serialization modes, plus
+  a check that the fallback hash still tracks the data instead of collapsing to a constant. One
+  condensed render check survives in the browser suite. - test_grid_drag_and_drop_example.py:
+  dropped. It asserted AG Grid's own managed row-drag reordering; the only st-aggrid code it touched
+  was gridOptions pass-through, already covered elsewhere. - test_grid_performance.py: dropped. It
+  built a one million row grid and asserted wall-clock thresholds with 60 to 120 second waits, which
+  measure the CI runner rather than the component.
+
+The ported browser cases get their own fixture page rather than joining ccv2_e2e_app.py, so they do
+  not lengthen the reruns that page's round-trip assertions wait on. olympic-winners.json and
+  test-gridOptions.json go too: they were fixtures for the deleted apps and nothing else referenced
+  them.
+
+- Scope the BLE001 and PYI034 exemptions to the files that need them
+  ([`3fdd2a8`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/3fdd2a89b25afc0b780bb5f15fee154ef2853a98))
+
+The BLE001 justification named three error boundaries, but the project-wide ignore also covered two
+  plain enum lookups in AgGrid.py: `DataReturnMode[...]` and `GridUpdateMode[...]` inside
+  `try/except Exception`. Those raise KeyError and nothing else, so they now catch KeyError and
+  chain with `raise ... from ex`, matching what aggrid_utils already does. The ignore moves to
+  per-file-ignores for the two files that hold the real boundaries, so a blind except anywhere else
+  gets flagged.
+
+PYI034 fired in exactly one file, test/e2e_utils.py, and was ignored project-wide. It moves to
+  per-file-ignores as well.
+
+- Select CI test suites by marker instead of by filename
+  ([`a45aa74`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/a45aa7471cba59edec2b943c6a544c1af6bb7ed0))
+
+The workflow named two files, so everything else was invisible to CI. test_python_layer.py had never
+  run there, and roughly fifty of the tests just added would not have run either: they would have
+  looked like coverage while guarding nothing. This is the same failure mode that left five e2e
+  files unexecuted, each dropped by a commit that did not think to edit tests.yml.
+
+Marking the two browser suites and selecting on `-m browser` / `-m "not browser"` makes the default
+  correct. A new test file now joins the right job by being written, and a silent job means there
+  are no tests rather than no wiring.
+
+The browser-less set runs on every Streamlit version in the matrix rather than just one. That is
+  where API drift shows up first, and it costs 1.2s for 64 tests.
+
+Split verified: 64 selected without a browser, 20 with, 84 total, so no test falls through the gap.
+  Full suite green.
+
+Also corrects the MINIMAL description in the skill file, which claimed the mode returns no row data.
+  It never did match the Python contract, and the new lean collector makes the old wording plainly
+  wrong.
+
+- Ship only the built bundle from frontend/, not the whole tree
+  ([`f74a18f`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/f74a18fa03788415e29bcbdd08b3d0ef6453d00d))
+
+- Upgrade frontend build to vite 8
+  ([`8067f3f`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/8067f3f6057e2fdfb1f1c3d634acad335b94f6db))
+
+vite 7.3.5 -> 8.1.4 and @vitejs/plugin-react 5 -> 6. Vite 8 bundles with Rolldown and minifies with
+  oxc, so esbuild leaves the dependency tree entirely; that clears the last open Dependabot alert
+  (GHSA-g7r4-m6w7-qqqr, dev-server file read), which vite 7 could not take because it did not accept
+  esbuild 0.28.1.
+
+Config: minify uses the vite 8 default (oxc) instead of the removed esbuild path, and the old
+  esbuild fine-tuning block is dropped; it sat under build where vite never read it, so it was a
+  no-op all along.
+
+Production build: 9.0s -> 1.1s, JS bundle 6851 -> 6040 kB (gzip 1661 -> 1503 kB). Full suite green
+  against the new bundle: 31 passed (16 unit + 3 smoke + 12 e2e).
+
+- Upgrade pillow and gitpython to clear the pip advisories
+  ([`676cdc1`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/676cdc1c04a5013e0d5e975e35a4974aee63baad))
+
+### Documentation
+
+- Note the MANUAL update_mode toolbar override in the show_toolbar docstring
+  ([`12cf204`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/12cf204431f6a1c4462d7460842ef13bd870d079))
+
+### Features
+
+- Warn when an update_on entry can never fire
+  ([`d00d818`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/d00d8180071de3b928577275249d9847addd99f0))
+
+
 ## v0.2.7 (2026-07-11)
 
 ### Bug Fixes
