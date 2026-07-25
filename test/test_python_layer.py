@@ -388,7 +388,10 @@ def test_reraise_with_hint_survives_empty_args():
     with pytest.raises(NoArgs) as excinfo:
         _reraise_with_hint(NoArgs(), "hint text")
 
-    assert "hint text" in "".join(getattr(excinfo.value, "__notes__", []))
+    # str(), not __notes__: notes are never rendered by Streamlit, and
+    # add_note does not exist on the 3.10 floor, where the old fallback
+    # rebuilt this as a RuntimeError and lost the NoArgs type entirely.
+    assert "hint text" in str(excinfo.value)
 
 
 def test_reraise_with_hint_keeps_the_original_traceback():

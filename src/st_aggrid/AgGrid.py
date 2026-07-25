@@ -75,16 +75,28 @@ def _reraise_with_hint(ex: Exception, hint: str):
 
     The hint has to land in ``str(ex)`` to do any good: Streamlit renders the
     exception message and the formatted traceback, and neither one includes
-    ``__notes__``, so a note on its own is visible only in the server console.
+    ``__notes__``. ``add_note`` would file the hint exactly where nobody can
+    read it, and it is 3.11+ while this package supports 3.10, where falling
+    back to a rebuilt RuntimeError destroyed the original exception type.
+    Every branch below keeps the type and reaches ``str(ex)`` on 3.10.
     """
-    add_note = getattr(ex, "add_note", None)
-    if ex.args and isinstance(ex.args[0], str):
+    if hint in str(ex):
+        # Already annotated. The same exception object can cross more than one
+        # boundary, and suffixes must not stack up.
+        raise ex
+    if not ex.args:
+        # str(ex) is "" here, so the hint is the entire message.
+        ex.args = (hint,)
+    elif isinstance(ex.args[0], str):
         ex.args = (f"{ex.args[0]}. {hint}", *ex.args[1:])
-        raise ex
-    if add_note is not None:
-        add_note(hint)
-        raise ex
-    raise RuntimeError(f"{ex}. {hint}") from ex
+    else:
+        # A non-string first argument has to survive intact for callers that
+        # read args[0] (json.JSONDecodeError carries the document and the
+        # position there), so the hint goes on as an extra argument instead.
+        # str() of a multi-arg exception is the repr of the whole tuple, so
+        # the hint still reaches the browser.
+        ex.args = (*ex.args, hint)
+    raise ex
 
 
 def AgGrid(

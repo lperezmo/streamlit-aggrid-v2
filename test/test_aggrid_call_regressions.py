@@ -261,7 +261,11 @@ def test_component_error_with_empty_args_is_not_swallowed(monkeypatch):
     with pytest.raises(NoArgs) as excinfo:
         render_grid(monkeypatch, DF.copy(), key="e2", raises=NoArgs())
 
-    assert "allow_unsafe_jscode" in "".join(getattr(excinfo.value, "__notes__", []))
+    # Asserted on str(), not __notes__. The hint used to be attached with
+    # add_note, which Streamlit never renders and which does not exist at all
+    # on the 3.10 floor, where the fallback rebuilt the error as a RuntimeError
+    # and lost the NoArgs type that pytest.raises above is checking for.
+    assert "allow_unsafe_jscode" in str(excinfo.value)
 
 
 # ---------------------------------------------------------------------------
