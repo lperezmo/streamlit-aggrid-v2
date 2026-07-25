@@ -138,6 +138,65 @@ def test_json_serialization_keeps_internal_column_out_of_the_response(monkeypatc
     assert "::auto_unique_id::" not in call.response.data.columns
 
 
+def test_json_serialization_with_row_data_in_grid_options(monkeypatch):
+    """rowData inside gridOptions must still reach the grid under
+    use_json_serialization=True.
+
+    The parser refused to move rowData into ``data`` in that mode, so the list
+    of record dicts stayed on gridOptions.rowData. The frontend's parseData
+    only unwraps rowData when it is a JSON *string*; a list fell through to []
+    and the grid rendered empty.
+    """
+    call = render_grid(
+        monkeypatch,
+        gridOptions={"columnDefs": [{"field": "a"}], "rowData": [{"a": 1}, {"a": 2}]},
+        key="jr1",
+        use_json_serialization=True,
+    )
+
+    row_data = call.grid_options["rowData"]
+    assert isinstance(row_data, str), (
+        "rowData reached the frontend as a Python list, which parseData ignores"
+    )
+    parsed = json.loads(row_data)
+    assert [row["a"] for row in parsed] == [1, 2]
+    # getRowId is derived from this column on the frontend, and it is only
+    # added on the path that treats rowData as data.
+    assert all("::auto_unique_id::" in row for row in parsed)
+
+
+def test_json_serialization_with_row_data_refreshes_on_change(monkeypatch):
+    """The grid only reloads rows when data_hash changes, so rowData supplied
+    through gridOptions has to be hashed like any other frame."""
+    first = render_grid(
+        monkeypatch,
+        gridOptions={"columnDefs": [{"field": "a"}], "rowData": [{"a": 1}]},
+        key="jr2",
+        use_json_serialization=True,
+    )
+    second = render_grid(
+        monkeypatch,
+        gridOptions={"columnDefs": [{"field": "a"}], "rowData": [{"a": 2}]},
+        key="jr2",
+        use_json_serialization=True,
+    )
+
+    assert first.component_data["data_hash"] != ""
+    assert first.component_data["data_hash"] != second.component_data["data_hash"]
+
+
+def test_row_data_in_grid_options_is_still_moved_without_json_serialization(monkeypatch):
+    """The default path must keep behaving exactly as before."""
+    call = render_grid(
+        monkeypatch,
+        gridOptions={"columnDefs": [{"field": "a"}], "rowData": [{"a": 1}, {"a": 2}]},
+        key="jr3",
+    )
+
+    assert "rowData" not in call.grid_options
+    assert [row["a"] for row in call.component_data["row_data"]] == [1, 2]
+
+
 # ---------------------------------------------------------------------------
 # update_mode=MANUAL is exclusive
 # ---------------------------------------------------------------------------

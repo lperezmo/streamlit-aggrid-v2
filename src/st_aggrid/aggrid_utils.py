@@ -121,8 +121,14 @@ def _parse_data_and_grid_options(
         # computes rows data types before adding id column
         column_types = data.dtypes
 
-    # if data is supplied via gridOptions.rowData move it to data parameter
-    if (grid_options.get("rowData", None) is not None) and use_json_serialization is not True:
+    # if data is supplied via gridOptions.rowData move it to data parameter.
+    # This runs for every serialization mode. It used to be skipped under
+    # use_json_serialization=True, which left a list of record dicts sitting on
+    # gridOptions.rowData: the frontend's parseData only unwraps rowData when it
+    # is a JSON *string*, so it fell through to [] and rendered an empty grid.
+    # It also left ``data`` at None, so the frame was never hashed and the grid
+    # could never refresh.
+    if grid_options.get("rowData", None) is not None:
         if data is not None:
             raise ValueError(
                 "Data was supplied by both data and gridOptions rowData. Use only one to load data into the grid."
