@@ -1,11 +1,45 @@
-from typing import Mapping
-from st_aggrid.shared import DataReturnMode
-
+import inspect
 import json
 import logging
-import pandas as pd
-import inspect
 import warnings
+from collections.abc import Mapping
+
+import pandas as pd
+
+from st_aggrid.shared import DataReturnMode
+
+# A library must not log through the root logger: root calls install a handler
+# on first use and the record carries no module name, so the message shows up
+# unattributed in the host app's console and cannot be silenced per package.
+_LOGGER = logging.getLogger(__name__)
+
+
+def _parse_datetimes(column, errors, dtype):
+    """Parse ISO strings back to ``dtype``, keeping the original time zone.
+
+    Parsing without ``utc=True`` asks pandas to infer one zone for the whole
+    column, and a tz-aware column that crosses a daylight-saving boundary
+    carries two different offsets: one row at -08:00 and the next at -07:00.
+    pandas 2 warns and degrades to object dtype, pandas 3 raises "Mixed
+    timezones detected". ``conversion_errors`` cannot soften that, because the
+    failure is in parsing the column rather than in any single cell, so even
+    "coerce" propagates it.
+
+    Normalizing through UTC removes the inference entirely, and the zone is
+    then restored from ``dtype``, which is the real source of truth. The offset
+    in the string cannot say *which* zone produced it, so on its own it could
+    not survive the next DST transition; the dtype still names
+    America/Los_Angeles.
+    """
+    parsed = pd.to_datetime(column, errors=errors, utc=True)
+    tz = getattr(dtype, "tz", None)
+    if tz is None:
+        # Naive input was serialized without an offset, so reading it as UTC
+        # and dropping the zone again returns the same wall-clock time.
+        parsed = parsed.dt.tz_localize(None)
+    else:
+        parsed = parsed.dt.tz_convert(tz)
+    return parsed.astype(dtype)
 
 
 class AgGridReturn(Mapping):
@@ -120,12 +154,20 @@ class AgGridReturn(Mapping):
             # Convert based on original dtype kind
             if dtype_kind == "i":  # Integer
                 converted_columns.append(
-                    self._convert_to_integer(column)
+                    self._convert_with_error_policy(
+                        column, self._convert_to_integer
+                    )
                 )
             elif dtype_kind == "f":  # Float
                 converted_columns.append(
-                    pd.to_numeric(column, errors=self._conversion_errors).astype(
-                        original_dtype, copy=False
+                    self._convert_with_error_policy(
+                        column,
+                        # dtype is bound as a default so the lambda captures
+                        # this iteration's dtype by value rather than closing
+                        # over the loop variable.
+                        lambda col, errors, dtype=original_dtype: pd.to_numeric(
+                            col, errors=errors
+                        ).astype(dtype, copy=False),
                     )
                 )
             elif dtype_kind in ("O", "S", "U"):  # Object/String/Unicode
@@ -134,8 +176,11 @@ class AgGridReturn(Mapping):
                 )
             elif dtype_kind == "M":  # Datetime
                 converted_columns.append(
-                    pd.to_datetime(column, errors=self._conversion_errors).astype(
-                        original_dtype, copy=False
+                    self._convert_with_error_policy(
+                        column,
+                        lambda col, errors, dtype=original_dtype: _parse_datetimes(
+                            col, errors, dtype
+                        ),
                     )
                 )
             elif dtype_kind == "m":  # Timedelta
@@ -147,26 +192,59 @@ class AgGridReturn(Mapping):
                     column.astype(original_dtype)
                 )
 
-        return pd.concat(converted_columns, axis=1, copy=False)
+        # A grid that returned zero nodes yields a zero-column frame, and
+        # pd.concat([]) raises "No objects to concatenate".
+        if not converted_columns:
+            return data
 
-    def _convert_to_integer(self, column):
+        # No copy= here. pandas 3 made copy-on-write unconditional, so the
+        # keyword asks for behavior it already has and is deprecated; pandas 4
+        # removes it, and this line is on the path of every response.data
+        # access, so a TypeError here takes out the whole return value rather
+        # than one column. On pandas 2 this costs one eager copy of the result.
+        # The .astype(..., copy=False) calls above are a different keyword and
+        # are not deprecated.
+        return pd.concat(converted_columns, axis=1)
+
+    def _convert_with_error_policy(self, column, converter):
+        """Run ``converter(column, errors)`` honoring conversion_errors.
+
+        pandas deprecated ``errors='ignore'`` and removes it in pandas 3.0, so
+        the documented behavior (return the input unchanged when conversion
+        fails) is implemented here instead of being forwarded to pandas.
+        """
+        if self._conversion_errors == "ignore":
+            try:
+                return converter(column, "raise")
+            except Exception:
+                return column
+        return converter(column, self._conversion_errors)
+
+    def _convert_to_integer(self, column, errors="coerce"):
         """Convert column to Int64, falling back to Float64 on errors.
+
+        ``errors`` is the pandas policy derived from ``conversion_errors`` by
+        _convert_with_error_policy, which is the only caller. It used to be
+        hardcoded to "coerce", so an uncoercible cell silently became <NA>
+        under conversion_errors="ignore" and never raised under "raise",
+        making the parameter a no-op for every integer column.
 
         Args:
             column: Series to convert
+            errors: pandas ``errors`` policy for the numeric conversion
 
         Returns:
             Series converted to Int64 or Float64
         """
         try:
             return pd.to_numeric(
-                column, downcast="integer", errors="coerce"
+                column, downcast="integer", errors=errors
             ).astype("Int64", copy=False)
         except TypeError:
             warnings.warn(
                 f"Error casting {column.name} to Int64. Falling back to Float64"
             )
-            return pd.to_numeric(column, errors="coerce").astype(
+            return pd.to_numeric(column, errors=errors).astype(
                 "Float64", copy=False
             )
 
@@ -252,8 +330,7 @@ class AgGridReturn(Mapping):
             return ()
 
         # Remove ROOT_NODE_ID prefix if present
-        if parent_path.startswith("ROOT_NODE_ID."):
-            parent_path = parent_path[13:]  # len("ROOT_NODE_ID.") = 13
+        parent_path = parent_path.removeprefix("ROOT_NODE_ID.")
 
         # Split by dots to get each level
         parts = parent_path.split(".")
@@ -438,7 +515,7 @@ class AgGridReturn(Mapping):
                 return self._process_grouped_response(nodes)
             else:
                 # Has groups but no proper parent paths - fall back to regular data
-                logging.warning(
+                _LOGGER.warning(
                     "Grouped data detected but no parentPath found in leaf nodes. Falling back to regular data."
                 )
 
@@ -534,16 +611,14 @@ class AgGridReturn(Mapping):
         return len(self._public_attribute_names())
 
     def keys(self):
-        """Return all available keys (attributes + grid_response keys)."""
-        attr_keys = self._public_attribute_names()
+        """Return the keys this Mapping iterates over.
 
-        # Get grid_response keys for backward compatibility
-        grid_response = self.__dict__.get("grid_response", {})
-        if isinstance(grid_response, dict):
-            grid_keys = [k for k in grid_response.keys() if k not in attr_keys]
-            return attr_keys + grid_keys
-
-        return attr_keys
+        __iter__/__len__ and keys() must agree: keys() used to append the raw
+        grid_response keys, so len(r) disagreed with len(r.keys()) and
+        dict(zip(r.keys(), r.values())) silently dropped the extras. Raw
+        response keys remain reachable through __getitem__ and .grid_response.
+        """
+        return self._public_attribute_names()
 
     def values(self):
         """Return all values for public attributes."""

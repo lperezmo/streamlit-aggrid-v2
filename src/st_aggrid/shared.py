@@ -1,7 +1,8 @@
-from enum import Enum, IntEnum, Flag, auto, EnumMeta
 import json
 import pathlib
-from typing import List, Literal, Mapping, Optional, TypedDict
+from collections.abc import Mapping
+from enum import Enum, EnumMeta, Flag, IntEnum, auto
+from typing import Literal
 
 DEFAULT_COLUMN_PROPS = [
     "cellDataType",
@@ -42,6 +43,12 @@ DEFAULT_COLUMN_PROPS = [
 ]
 
 
+# gridOptions.json and columnProps.json were scraped from the AG Grid docs,
+# https://ag-grid.com/react-data-grid/grid-options/ and .../column-properties/,
+# and are checked in as snapshots. There is no automated refresh: the scraper
+# that produced them selected on hashed CSS classes from the docs build and
+# stopped matching long ago. Regenerating means writing the extraction against
+# whatever the page looks like at the time.
 def getAllGridOptions():
     jsonRoot = pathlib.Path(__file__).parent / "json"
     with open(jsonRoot / "gridOptions.json") as f:
@@ -51,12 +58,6 @@ def getAllGridOptions():
 def getAllColumnProps():
     jsonRoot = pathlib.Path(__file__).parent / "json"
     with open(jsonRoot / "columnProps.json") as f:
-        return json.load(f)
-
-
-def getAllGridEvents():
-    jsonRoot = pathlib.Path(__file__).parent / "json"
-    with open(jsonRoot / "gridEvents.json") as f:
         return json.load(f)
 
 
@@ -138,14 +139,6 @@ class JsCode:
         self.js_code = f"{js_placeholder}{one_line_jscode}{js_placeholder}"
 
 
-class JsCodeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, JsCode):
-            return o.js_code
-
-        return super().default(o)
-
-
 def walk_gridOptions(go, func):
     """Recursively walk grid options applying func at each leaf node
 
@@ -155,47 +148,22 @@ def walk_gridOptions(go, func):
     """
     from collections.abc import Mapping
 
-    if isinstance(go, (Mapping, list)):
-        for i, k in enumerate(go):
-            if isinstance(go[k], Mapping):
-                walk_gridOptions(go[k], func)
-            elif isinstance(go[k], list):
-                for j in go[k]:
-                    walk_gridOptions(j, func)
-            else:
-                go[k] = func(go[k])
+    # Mappings and lists need different key sets: enumerating a list yields
+    # (index, element) pairs, so indexing it by the element blows up on nested
+    # lists and skips scalar elements (leaving JsCode objects unconverted).
+    if isinstance(go, Mapping):
+        keys = list(go)
+    elif isinstance(go, list):
+        keys = range(len(go))
+    else:
+        return
 
-
-def fetch_grid_options_from_site():
-    import itertools
-    import requests
-    from bs4 import BeautifulSoup
-
-    # Fetch the URL text
-    url = "https://ag-grid.com/react-data-grid/grid-options/"
-    response = requests.get(url)
-
-    # Parse the HTML text
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    result = []
-
-    for r in soup.select("tr"):
-        c1, c2 = r.select("td")
-        element = c1.select_one("h6._name_1pw3t_115 > span").text
-        labels = [p.text for p in c1.select("span._metaLabel_1pw3t_162")]
-        values = [p.text for p in c1.select("span._metaValue_1pw3t_167")]
-        args = dict(itertools.zip_longest(labels, values))
-        description = c2.text
-        i = {}
-        i["name"] = element
-        i["props"] = args
-        i["description"] = description
-        result.append(i)
-
-    import json
-
-    return json.dumps(result, indent=4)
+    for k in keys:
+        value = go[k]
+        if isinstance(value, (Mapping, list)):
+            walk_gridOptions(value, func)
+        else:
+            go[k] = func(value)
 
 
 # add deprecation note
@@ -207,22 +175,17 @@ class AgGridTheme(BaseEnum):
     MATERIAL = "material"
 
 
-class StAggridThemeType(TypedDict, total=False):
-    themeName: str
-    base: Literal["quartz", "alpine", "balham", "material"]
-    params: Mapping[str, str | int]
-    parts: List[str]
-
-
 # suclassing a dict because it is JSON serializable.
 class StAggridTheme(dict):
-    def __init__(self, base: Optional[Literal["quartz", "alpine", "balham", "material"]] = None):
+    def __init__(self, base: Literal["quartz", "alpine", "balham", "material"] | None = None):
         super()
 
         self["params"] = {}
-        self["parts"] = list()
+        self["parts"] = []
+        # themeName must always be set: the frontend theme parser falls back to
+        # balham for an undefined name, silently discarding withParams/withParts.
+        self["themeName"] = "custom"
         if base:
-            self["themeName"] = "custom"
             self.base(base)
 
     def base(self, base: Literal["quartz", "alpine", "balham", "material"]):
@@ -232,6 +195,6 @@ class StAggridTheme(dict):
         self["params"].update(params)
         return self
 
-    def withParts(self, *parts: List[str]):
+    def withParts(self, *parts: list[str]):
         self["parts"] = list(set(self["parts"]).union(set(parts)))
         return self

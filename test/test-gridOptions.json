@@ -1,7 +1,0 @@
-{
-  "columnDefs": [{ "field": "athlete" }, { "field": "sport" }, { "field": "age" }],
-  "defaultColDef": {
-    "width": 150,
-    "cellStyle": { "fontWeight": "bold" }
-  }
-}

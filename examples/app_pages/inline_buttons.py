@@ -1,7 +1,9 @@
-"""Inline Buttons — Delete/Undo toggle pattern with sentinel column."""
+"""Inline Buttons: Delete/Undo toggle pattern with sentinel column."""
 
 import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+
 from utils.data import get_sample_data
 
 df = get_sample_data().copy()
@@ -153,10 +155,10 @@ with st.expander("How it works", icon=":material/info:"):
 5. On form submit, Python filters `result.data` to separate kept vs. deleted rows
 
 **Why this works well:**
-- No extra state management — the sentinel lives in AG Grid's data model
+- No extra state management: the sentinel lives in AG Grid's data model
 - Survives filtering and sorting
-- Reversible — "Undo" clears the sentinel before any data is committed
-- Clean separation — JS handles UI toggling, Python handles actual operations
+- Reversible: "Undo" clears the sentinel before any data is committed
+- Clean separation: JS handles UI toggling, Python handles actual operations
 """)
 
 # -- Code --------------------------------------------------------------------

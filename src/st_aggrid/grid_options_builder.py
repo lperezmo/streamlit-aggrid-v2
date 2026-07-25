@@ -3,6 +3,35 @@ from collections import defaultdict
 
 from st_aggrid.shared import getAllColumnProps, getAllGridOptions
 
+
+def _copy_containers(value):
+    """Copy the dict/list/tuple spine of ``value``, sharing every leaf.
+
+    ``copy.deepcopy`` is not used on purpose: gridOptions carry JsCode objects
+    and plain Python callables, and duplicating those would break identity
+    comparisons for callers that hold a reference to the object they put in.
+    Only the containers need to be new, because that is all anything mutates:
+    ``AgGrid()`` rewrites JsCode leaves into ``::JSCODE::`` strings *inside*
+    the colDef dicts (see ``walk_gridOptions``), so a shallow copy left two
+    builds sharing the dict that gets rewritten.
+
+    ``defaultdict`` instances are rebuilt with their factory so the built
+    options keep the auto-vivifying behavior they have always had.
+    """
+    if isinstance(value, defaultdict):
+        copied = defaultdict(value.default_factory)
+        for key, item in value.items():
+            copied[key] = _copy_containers(item)
+        return copied
+    if isinstance(value, dict):
+        return {key: _copy_containers(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_copy_containers(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_copy_containers(item) for item in value)
+    return value
+
+
 class GridOptionsBuilder:
     """Builder for gridOptions dictionary"""
 
@@ -11,7 +40,7 @@ class GridOptionsBuilder:
             return defaultdict(ddict)
 
         self.__grid_options = ddict()
-        self.sideBar: dict = dict()
+        self.sideBar: dict = {}
 
     @staticmethod
     def from_dataframe(dataframe, **default_column_parameters):
@@ -145,14 +174,14 @@ class GridOptionsBuilder:
         """
         self.__grid_options.update(props)
 
-    def configure_columns(self, column_names=[], **props):
+    def configure_columns(self, column_names=(), **props):
         """Batch configures columns. Key-pair values from props dict will be merged
         to colDefs which field property is in column_names list.
 
         Args:
             column_names (list, optional):
                 columns field properties. If any of colDefs matches **props dict is merged.
-                Defaults to [].
+                Defaults to () (no column is touched).
         """
         for k in self.__grid_options["columnDefs"]:
             if k in column_names:
@@ -229,7 +258,7 @@ class GridOptionsBuilder:
         header_checkbox: bool = False,
         header_checkbox_filtered_only: bool = True,
         pre_select_all_rows: bool = False,
-        pre_selected_rows: list = None,
+        pre_selected_rows: list | None = None,
         rowMultiSelectWithClick: bool = False,
         suppressRowDeselection: bool = False,
         suppressRowClickSelection: bool = False,
@@ -375,11 +404,27 @@ class GridOptionsBuilder:
     def build(self):
         """Builds the gridOptions dictionary
 
+        Building does not mutate the builder, so the same builder can be built
+        once per grid. (It used to replace the internal columnDefs mapping with
+        a list, which made a second build() raise AttributeError.)
+
+        The result shares no dict or list with the builder or with any earlier
+        build: it used to be a shallow copy, so defaultColDef and every colDef
+        were the same objects across builds. That is not a theoretical
+        problem, because ``AgGrid(..., allow_unsafe_jscode=True)`` rewrites
+        JsCode values into ``::JSCODE::`` strings in place inside those shared
+        colDefs, and the next build came out already flattened.
+
+        JsCode objects and callables inside the options are shared, not
+        copied, so identity comparisons against what the caller passed in
+        still hold.
+
         Returns:
             dict: Returns a dicionary containing the configured grid options
         """
-        self.__grid_options["columnDefs"] = list(
-            self.__grid_options["columnDefs"].values()
+        grid_options = _copy_containers(self.__grid_options)
+        grid_options["columnDefs"] = list(
+            grid_options["columnDefs"].values()
         )
 
-        return self.__grid_options
+        return grid_options

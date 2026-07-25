@@ -2,7 +2,10 @@
 Minimal collector for lightweight AgGrid responses
 """
 
-from typing import Any, Dict
+from typing import Any
+
+import pandas as pd
+
 from .base import BaseCollector
 
 
@@ -12,29 +15,64 @@ class MinimalResponse:
     Provides only essential data with minimal processing overhead.
     """
     
-    def __init__(self, component_value: Any = None):
+    def __init__(self, component_value: Any = None, original_data: Any = None):
         """
         Initialize minimal response with raw component value
-        
+
         Parameters
         ----------
         component_value : Any
             Raw response from the AgGrid component
+        original_data : Any
+            The frame that was handed to the grid. It is what ``.data`` reports
+            until the frontend sends something back, which is how every other
+            data_return_mode behaves on a first render.
         """
         self._component_value = component_value
-    
+        self._original_data = original_data
+
     @property
     def raw_data(self) -> Any:
         """Access to the raw component data"""
         return self._component_value
-    
+
     @property
     def data(self):
-        """Basic data access - returns raw data without processing"""
+        """Rows from the grid as a DataFrame, or the input frame before the
+        first response.
+
+        The frontend has not reported anything on a first render (and never
+        does until an update_on event fires, which under update_mode=MANUAL
+        means until the toolbar button is clicked). Returning None there made
+        MINIMAL the only mode whose ``.data`` was empty on load; the input
+        frame is what AS_INPUT, FILTERED and FILTERED_AND_SORTED all return.
+
+        The rows are wrapped in a DataFrame so the type does not change
+        underneath the caller. Returning the raw ``list[dict]`` from the
+        payload meant ``.data`` was a DataFrame on load and a list from the
+        first grid interaction onward, so ``response.data["col"]``,
+        ``.empty``, ``.iloc`` and ``len(response.data.index)`` all worked
+        until the user touched the grid and then raised. ``raw_data`` still
+        exposes the unwrapped payload for callers that want the records.
+
+        The frame is built on access, not in the collector, so a MINIMAL grid
+        whose response is never read still costs nothing.
+        """
         if self._component_value and isinstance(self._component_value, dict):
-            return self._component_value.get('data')
-        return None
-    
+            records = self._component_value.get('data')
+            if records is None:
+                return None
+            if isinstance(records, pd.DataFrame):
+                return records
+            frame = pd.DataFrame(records)
+            # Every row can be filtered out, and pd.DataFrame([]) has no
+            # columns at all. Borrow them from the input frame so an empty
+            # result still describes the same table.
+            if frame.empty and isinstance(self._original_data, pd.DataFrame):
+                frame = frame.reindex(columns=self._original_data.columns)
+            return frame
+        return self._original_data
+
     @property
     def selected_rows(self):
         """Basic selected rows access"""
@@ -83,14 +121,13 @@ class MinimalCollector(BaseCollector):
     
     def __init__(self):
         """Initialize the minimal collector"""
-        pass
     
-    def create_initial_response(self, original_data: Any, grid_options: Dict, **kwargs) -> MinimalResponse:
+    def create_initial_response(self, original_data: Any, grid_options: dict, **kwargs) -> MinimalResponse:
         """
         Create an initial MinimalResponse object that can be safely referenced by callbacks
         """
-        return MinimalResponse()
-    
+        return MinimalResponse(original_data=original_data)
+
     def update_response(self, response: MinimalResponse, component_value: Any) -> MinimalResponse:
         """
         Update the MinimalResponse object with component data
@@ -99,11 +136,11 @@ class MinimalCollector(BaseCollector):
             response._component_value = component_value
         return response
     
-    def process_response(self, component_value: Any, original_data: Any, grid_options: Dict) -> MinimalResponse:
+    def process_response(self, component_value: Any, original_data: Any, grid_options: dict) -> MinimalResponse:
         """
         Process response with minimal overhead - just wrap the raw component value
         """
-        return MinimalResponse(component_value)
+        return MinimalResponse(component_value, original_data=original_data)
     
     def get_return_type(self) -> str:
         """Return type description for minimal collector"""

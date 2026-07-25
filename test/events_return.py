@@ -1,7 +1,8 @@
 import json
-from st_aggrid import AgGrid, JsCode
+
 import streamlit as st
 
+from st_aggrid import AgGrid, JsCode
 
 """grid launches with json data and grid options"""
 

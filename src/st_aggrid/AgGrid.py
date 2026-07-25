@@ -1,33 +1,50 @@
-import streamlit as st
-import pandas as pd
-import warnings
-import typing
 import logging
+import typing
+import warnings
+from typing import Literal
+
+import pandas as pd
+import streamlit as st
 from decouple import config
-from typing import Union, Literal
 
 try:
     import pyarrow.lib
 except ImportError:
     pyarrow = None
 from st_aggrid import _compat
-from st_aggrid.shared import (
-    GridUpdateMode,
-    DataReturnMode,
-    ColumnsAutoSizeMode,
-    JsCode,
-    StAggridTheme,
-    AgGridTheme,
-)
 from st_aggrid.aggrid_utils import (
-    parse_update_mode,
     _parse_data_and_grid_options,
     _sanitize_nan_inf,
+    dedupe_update_on,
+    parse_update_mode,
+    validate_update_on,
 )
 from st_aggrid.AgGridReturn import AgGridReturn
+from st_aggrid.shared import (
+    AgGridTheme,
+    ColumnsAutoSizeMode,
+    DataReturnMode,
+    GridUpdateMode,
+    JsCode,
+    StAggridTheme,
+)
 
-# Track shown deprecation warnings to avoid repetition in Streamlit
-_shown_deprecation_warnings = set()
+# A library must not log through the root logger: root calls install a handler
+# on first use and the record carries no module name, so the message shows up
+# unattributed in the host app's console and cannot be silenced per package.
+_LOGGER = logging.getLogger(__name__)
+
+# Warning keys already emitted in this process. A Streamlit script reruns
+# top to bottom on every interaction, so anything warned about at call time
+# would otherwise repeat for the lifetime of the app and train the reader to
+# ignore it. Holds deprecations and the one-off configuration warnings alike.
+_shown_once_warnings = set()
+
+# Theme names this component documented but never implemented. The frontend
+# fell through to balham for any name it did not recognize, so that is what
+# they rendered. Accepted with a DeprecationWarning rather than rejected, so
+# apps written against the old docstring keep working for one more release.
+_RETIRED_THEME_NAMES = frozenset({"light", "dark", "blue", "fresh"})
 
 _RELEASE = config("AGGRID_RELEASE", default=True, cast=bool)
 
@@ -55,12 +72,47 @@ def _get_component_func():
 
 def _on_grid_return_change():
     """Callback for when the grid return state changes in the frontend."""
-    pass
+
+
+def _reraise_with_hint(ex: Exception, hint: str):
+    """Re-raise ``ex`` with an extra hint, preserving type and traceback.
+
+    Rebuilding the exception with ``type(ex)(*ex.args)`` breaks for any
+    exception whose constructor does not take its own args back (for example
+    StreamlitDuplicateElementId or json.JSONDecodeError) and blows up on
+    exceptions with empty args, destroying the original error. Mutating
+    ``args`` in place skips the constructor entirely, so the type and the
+    traceback both survive.
+
+    The hint has to land in ``str(ex)`` to do any good: Streamlit renders the
+    exception message and the formatted traceback, and neither one includes
+    ``__notes__``. ``add_note`` would file the hint exactly where nobody can
+    read it, and it is 3.11+ while this package supports 3.10, where falling
+    back to a rebuilt RuntimeError destroyed the original exception type.
+    Every branch below keeps the type and reaches ``str(ex)`` on 3.10.
+    """
+    if hint in str(ex):
+        # Already annotated. The same exception object can cross more than one
+        # boundary, and suffixes must not stack up.
+        raise ex
+    if not ex.args:
+        # str(ex) is "" here, so the hint is the entire message.
+        ex.args = (hint,)
+    elif isinstance(ex.args[0], str):
+        ex.args = (f"{ex.args[0]}. {hint}", *ex.args[1:])
+    else:
+        # A non-string first argument has to survive intact for callers that
+        # read args[0] (json.JSONDecodeError carries the document and the
+        # position there), so the hint goes on as an extra argument instead.
+        # str() of a multi-arg exception is the repr of the whole tuple, so
+        # the hint still reaches the browser.
+        ex.args = (*ex.args, hint)
+    raise ex
 
 
 def AgGrid(
-    data: Union[pd.DataFrame, str] = None,
-    gridOptions: typing.Dict = None,
+    data: pd.DataFrame | str | None = None,
+    gridOptions: dict | None = None,
     height: int = 400,
     update_mode: GridUpdateMode
     | Literal[
@@ -73,7 +125,7 @@ def AgGrid(
     allow_unsafe_jscode: bool = False,
     enable_enterprise_modules: bool
     | Literal["enterpriseOnly", "enterprise+AgCharts"] = False,
-    license_key: str = None,
+    license_key: str | None = None,
     conversion_errors: str = "coerce",
     columns_state=None,
     theme: str
@@ -83,7 +135,7 @@ def AgGrid(
     key: typing.Any = None,
     update_on=None,
     callback=None,
-    show_toolbar: bool = False,
+    show_toolbar: bool | None = None,
     show_search: bool = True,
     show_download_button: bool = True,
     custom_jscode_for_grid_return: JsCode = None,
@@ -124,7 +176,17 @@ def AgGrid(
 
     update_mode : GridUpdateMode, optional
         DEPRECATED. Use update_on parameter instead.
-        Defines how the grid sends results back to Streamlit.
+        Defines how the grid sends results back to Streamlit. The events it
+        implies are added on top of update_on.
+
+        GridUpdateMode.MANUAL is exclusive: the update button in the toolbar
+        becomes the only way the grid returns data, and the default update_on
+        events (cellValueChanged, selectionChanged, filterChanged,
+        sortChanged) are not attached. This matches v1 semantics. Pass
+        update_on explicitly to keep extra triggers alongside the button;
+        whatever you pass is used verbatim. show_toolbar is forced to True in
+        this mode so the button is reachable.
+
         Defaults to GridUpdateMode.NO_UPDATE.
 
     data_return_mode : DataReturnMode, optional
@@ -132,6 +194,12 @@ def AgGrid(
             - AS_INPUT: Returns data as originally provided, includes edits
             - FILTERED: Returns filtered data in original order
             - FILTERED_AND_SORTED: Returns filtered and sorted data
+            - MINIMAL: Returns a MinimalResponse. The frontend sends back only
+              the displayed rows (after filter and sort) and the selected rows,
+              with no node metadata, grid state or column state, so the wire
+              payload stays small on wide or deep grids. Read it through
+              .data, which is always a DataFrame, and .selected_rows, which is
+              a list of record dicts. .raw_data is the unwrapped payload.
             - CUSTOM: Returns CustomResponse with user-defined data structure (requires custom_jscode_for_grid_return set)
         Defaults to DataReturnMode.FILTERED_AND_SORTED.
 
@@ -175,15 +243,24 @@ def AgGrid(
         GridOptionsBuilder.from_dataframe injects). Leave as None to keep
         gridOptions untouched. Defaults to None.
 
-    theme : str | StAggridTheme, optional
-        Grid theme:
+    theme : str | AgGridTheme | StAggridTheme, optional
+        Grid theme. Strings must be one of the AgGridTheme members:
             - 'streamlit': Matches Streamlit's default styling
-            - 'light': AG Grid balham-light theme
-            - 'dark': AG Grid balham-dark theme
-            - 'blue': AG Grid blue theme
-            - 'fresh': AG Grid fresh theme
+            - 'quartz': AG Grid quartz theme
+            - 'alpine': AG Grid alpine theme
+            - 'balham': AG Grid balham theme
             - 'material': AG Grid material theme
-        Defaults to 'streamlit'.
+        Pass a StAggridTheme instance to customize a base theme with
+        .withParams()/.withParts(). Defaults to 'streamlit'.
+
+        Any other string raises ValueError, with four exceptions. 'light',
+        'dark', 'blue' and 'fresh' used to be listed here, but no version of
+        this component ever implemented them: the frontend silently fell
+        through to balham for every name it did not recognize, so the four
+        were documentation for behavior that did not exist. They are still
+        accepted, still render balham and now emit a DeprecationWarning; they
+        will raise in a future version. Use 'balham' for the same result, or a
+        StAggridTheme if the point was to restyle the grid.
 
     custom_css : dict, optional
         Custom CSS rules injected into the component iframe.
@@ -195,7 +272,16 @@ def AgGrid(
         Use tuple (event_name, debounce_ms) for debounced events.
 
         Example: ['cellValueChanged', ('columnResized', 500)]
-        Defaults to ['cellValueChanged', 'selectionChanged', 'filterChanged', 'sortChanged'].
+        Defaults to ['cellValueChanged', 'selectionChanged', 'filterChanged', 'sortChanged'],
+        except when update_mode is GridUpdateMode.MANUAL, where the default is
+        no events at all so the update button is the only return path.
+
+        Names are checked against the AG Grid version bundled with this
+        package. An entry that cannot fire, either because it is not an AG
+        Grid event or because it is dispatched on a Column or a row node
+        rather than on the grid, warns and names the likely intended event.
+        The entry is still forwarded: the check is advisory, so a genuinely
+        supported event this package does not know about keeps working.
 
     callback : callable, optional
         Function called when grid data changes. Receives AgGridReturn object.
@@ -204,7 +290,11 @@ def AgGrid(
 
     show_toolbar : bool, optional
         Show toolbar above the grid.
-        Defaults to False.
+        Defaults to None, which means False, except when update_mode is
+        MANUAL, where it is forced to True because the manual update button
+        lives in the toolbar and would otherwise be unreachable. Passing False
+        explicitly under MANUAL is still overridden, but logs a warning naming
+        the conflict instead of discarding the argument silently.
 
     show_search : bool, optional
         Show search bar in toolbar.
@@ -308,13 +398,13 @@ def AgGrid(
     if "reload_data" in default_column_parameters:
         default_column_parameters.pop("reload_data")
         warning_key = "reload_data_deprecated"
-        if warning_key not in _shown_deprecation_warnings:
+        if warning_key not in _shown_once_warnings:
             warnings.warn(
                 "The 'reload_data' parameter has been removed and has no effect.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            _shown_deprecation_warnings.add(warning_key)
+            _shown_once_warnings.add(warning_key)
 
     try_to_convert_back_to_original_types: bool = True
     # Deprecated parameter handling for backward compatibility
@@ -323,23 +413,53 @@ def AgGrid(
             "try_to_convert_back_to_original_types"
         )
         warning_key = "try_to_convert_back_to_original_types_deprecated"
-        if warning_key not in _shown_deprecation_warnings:
+        if warning_key not in _shown_once_warnings:
             warnings.warn(
                 "The 'try_to_convert_back_to_original_types' parameter is deprecated and will be removed in a future version. "
                 "The component now handles type preservation automatically where appropriate.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            _shown_deprecation_warnings.add(warning_key)
+            _shown_once_warnings.add(warning_key)
 
     ##Parses Themes
-    if isinstance(theme, (str, AgGridTheme)):
-        # Legacy compatibility
-        themeObj: StAggridTheme = StAggridTheme(None)
-        themeObj["themeName"] = theme if isinstance(theme, str) else theme.value
-
-    elif isinstance(theme, StAggridTheme):
+    if isinstance(theme, StAggridTheme):
         themeObj = theme
+
+    elif isinstance(theme, AgGridTheme):
+        themeObj: StAggridTheme = StAggridTheme(None)
+        themeObj["themeName"] = theme.value
+
+    elif isinstance(theme, str):
+        # Unknown names used to fall through to AG Grid's balham theme without
+        # any warning, so validate against the themes the frontend knows.
+        if theme in _RETIRED_THEME_NAMES:
+            # Not raised, because these four were listed in this function's own
+            # published docstring. They never did anything (the frontend fell
+            # through to balham for any name it did not recognize), but an app
+            # written against the docs would go from "renders balham" to a
+            # ValueError that takes the whole page down, on a 0.x minor. Keep
+            # the old rendering for one release and say so.
+            warning_key = f"retired_theme_{theme}"
+            if warning_key not in _shown_once_warnings:
+                warnings.warn(
+                    f"theme={theme!r} is deprecated and will raise in a future "
+                    "version. No release ever implemented it: the frontend fell "
+                    "through to balham for every name it did not recognize, which "
+                    "is what this call keeps doing. Pass 'balham' for the same "
+                    "result, or a StAggridTheme to actually restyle the grid.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                _shown_once_warnings.add(warning_key)
+            theme = AgGridTheme.BALHAM.value
+        elif theme not in AgGridTheme:
+            raise ValueError(
+                f"{theme} is not a valid theme. Available options: "
+                f"{[t.value for t in AgGridTheme]}"
+            )
+        themeObj = StAggridTheme(None)
+        themeObj["themeName"] = theme
 
     elif theme is None:
         themeObj = StAggridTheme(None)
@@ -357,8 +477,8 @@ def AgGrid(
     elif isinstance(data_return_mode, str):
         try:
             data_return_mode = DataReturnMode[data_return_mode.upper()]
-        except Exception:
-            raise ValueError(f"{data_return_mode} is not valid.")
+        except KeyError as ex:
+            raise ValueError(f"{data_return_mode} is not valid.") from ex
 
     # Parse update Mode
     if not isinstance(update_mode, (str, GridUpdateMode)):
@@ -368,31 +488,94 @@ def AgGrid(
     elif isinstance(update_mode, str):
         try:
             update_mode = GridUpdateMode[update_mode.upper()]
-        except Exception:
-            raise ValueError(f"{update_mode} is not valid.")
+        except KeyError as ex:
+            raise ValueError(f"{update_mode} is not valid.") from ex
 
     # Add deprecation warning for GridUpdateMode
     if update_mode != GridUpdateMode.NO_UPDATE:
         warning_key = "GridUpdateMode_deprecated"
-        if warning_key not in _shown_deprecation_warnings:
+        if warning_key not in _shown_once_warnings:
             warnings.warn(
                 "GridUpdateMode is deprecated and will be removed in a future version. "
                 "Use the 'update_on' parameter instead to specify which events should trigger updates.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            _shown_deprecation_warnings.add(warning_key)
+            _shown_once_warnings.add(warning_key)
 
+    update_on_was_explicit = update_on is not None
     if update_on is None:
         update_on = ["cellValueChanged", "selectionChanged", "filterChanged", "sortChanged"]
+    elif isinstance(update_on, str):
+        # A single event name reads naturally as a bare string, and everything
+        # downstream only iterates, so a string used to decay into a list of its
+        # characters: dedupe_update_on("selectionChanged") returned
+        # ['s', 'e', 'l', 'c', ...] and the frontend attached a listener per
+        # letter, none of which could ever fire. Accepted rather than warned
+        # about, because wrapping it is unambiguously what the caller meant.
+        # validate_update_on keeps its own guard for callers reaching it
+        # directly, where there is no chance to normalize first.
+        update_on = [update_on]
 
     manual_update = False
     if update_mode:
         update_on = list(update_on)
-        if update_mode == GridUpdateMode.MANUAL:
+        # Bitwise, because GridUpdateMode is a Flag and MANUAL composes with
+        # the rest. An equality test read `MANUAL | VALUE_CHANGED` as "not
+        # MANUAL": no update button was rendered, the toolbar was not forced
+        # on, and parse_update_mode dropped the MANUAL bit on the floor, so the
+        # grid ended up with no manual return path at all.
+        if update_mode & GridUpdateMode.MANUAL:
             manual_update = True
-        else:
-            update_on.extend(parse_update_mode(update_mode))
+            # MANUAL on its own is exclusive: the update button is the only
+            # return path. The default event list would otherwise keep sending
+            # data back on every edit, selection, filter and sort, which
+            # defeats the mode. Callers who want extra triggers alongside the
+            # button ask for them either by passing update_on explicitly or by
+            # setting the other bits of the flag, and both are honored: the
+            # first survives this branch, the second comes back from
+            # parse_update_mode below.
+            if not update_on_was_explicit:
+                update_on = []
+            # The manual update button lives inside the toolbar, so a hidden
+            # toolbar would leave a manual-update grid with no way to update.
+            if show_toolbar is False:
+                warning_key = "manual_update_overrides_show_toolbar"
+                if warning_key not in _shown_once_warnings:
+                    _LOGGER.warning(
+                        "show_toolbar=False conflicts with update_mode=MANUAL and is "
+                        "being overridden to True: the manual update button lives in "
+                        "the toolbar, so hiding it would leave the grid with no way "
+                        "to return data. To keep the toolbar hidden, drop "
+                        "update_mode=MANUAL and use update_on to choose which events "
+                        "return data."
+                    )
+                    _shown_once_warnings.add(warning_key)
+            show_toolbar = True
+
+        # Runs for MANUAL too. parse_update_mode returns [] for a bare MANUAL,
+        # and the events of whatever else is set when MANUAL is one bit of a
+        # composed flag.
+        update_on.extend(parse_update_mode(update_mode))
+
+    # One listener per event. The frontend attaches a fresh closure for every
+    # entry and AG Grid keys listeners by function identity, so a duplicated
+    # entry means the collector walk and the Streamlit state write both run
+    # twice per event. update_mode re-adds the same defaults update_on already
+    # carries, so MODEL_CHANGED, VALUE_CHANGED and GRID_CHANGED all did this.
+    update_on = dedupe_update_on(update_on)
+
+    # Runs after the dedupe so a name contributed by both update_on and
+    # update_mode is reported once rather than once per occurrence. Every event
+    # parse_update_mode can add is a real grid event, so the merge above cannot
+    # be the source of a warning.
+    validate_update_on(update_on)
+
+    # None is the "caller said nothing" sentinel used above to tell an explicit
+    # show_toolbar=False from the default. The frontend reads a missing value as
+    # true (`show_toolbar ?? true`), so it must be resolved before it goes out.
+    if show_toolbar is None:
+        show_toolbar = False
 
     # Validate CUSTOM mode parameters
     if data_return_mode == DataReturnMode.CUSTOM:
@@ -416,6 +599,15 @@ def AgGrid(
         should_grid_return = should_grid_return.js_code
         allow_unsafe_jscode = True
 
+    # These are consumed here, not by AG Grid. Pop them before the parse call
+    # or GridOptionsBuilder.from_dataframe warns that they are not valid
+    # gridOptions even though both are honored below.
+    fit_columns_on_grid_load = default_column_parameters.pop(
+        "fit_columns_on_grid_load", False
+    )
+    pro_assets = default_column_parameters.pop("pro_assets", None)
+    debug = default_column_parameters.pop("debug", False)
+
     # parse data and gridOptions
     data, gridOptions, frame_dtypes = _parse_data_and_grid_options(
         data,
@@ -425,15 +617,32 @@ def AgGrid(
         use_json_serialization,
     )
 
-    if not isinstance(data, pd.DataFrame):
+    # JSON serialization hands the frame to the grid as a JSON string on
+    # gridOptions.rowData. Keep a reference to it so the response object still
+    # exposes a DataFrame instead of silently switching .data to a str.
+    json_serialized_frame = None
+    if use_json_serialization is True and data is not None:
+        gridOptions["rowData"] = data.to_json(orient="records")
+        json_serialized_frame = data
+        data = None
+
+    # The frame that was actually handed to the grid, whichever serialization
+    # path was taken. Everything downstream that reasons about "the data" (dtype
+    # round-tripping, the change-detection hash, the response object) has to go
+    # through this: under use_json_serialization=True the frame lives in
+    # gridOptions["rowData"] and ``data`` is None, and testing ``data`` alone
+    # silently degraded both the dtypes and the hash.
+    sent_frame = data if data is not None else json_serialized_frame
+
+    if not isinstance(sent_frame, pd.DataFrame):
         try_to_convert_back_to_original_types = False
 
-    custom_css = custom_css or dict()
+    custom_css = custom_css or {}
 
     if height is None:
         gridOptions["domLayout"] = "autoHeight"
 
-    if default_column_parameters.pop("fit_columns_on_grid_load", False):
+    if fit_columns_on_grid_load:
         warnings.warn(
             "fit_columns_on_grid_load is deprecated. Use gridOptions autoSizeStrategy instead.",
             DeprecationWarning,
@@ -497,11 +706,11 @@ def AgGrid(
 
     # Create initial response object that callbacks can safely reference
     original_data = None
-    if data is not None:
+    if sent_frame is not None:
         original_data = (
-            data.drop("::auto_unique_id::", axis="columns")
-            if "::auto_unique_id::" in data.columns
-            else data
+            sent_frame.drop("::auto_unique_id::", axis="columns")
+            if "::auto_unique_id::" in sent_frame.columns
+            else sent_frame
         )
 
     response = collector.create_initial_response(
@@ -518,7 +727,7 @@ def AgGrid(
         # This allows the table to keep its state up to date (eg #176)
         def _inner_callback():
             session_value = st.session_state.get(key)
-            _ = session_value.grid_return if session_value else None  # noqa: F841
+            _ = session_value.grid_return if session_value else None
 
     elif callback and key:
         # User defined callback
@@ -533,8 +742,6 @@ def AgGrid(
     else:
         _inner_callback = None
 
-    pro_assets = default_column_parameters.pop("pro_assets", None)
-
     def _compute_data_hash(df):
         if df is None:
             return ""
@@ -542,7 +749,7 @@ def AgGrid(
         try:
             return str(pd.util.hash_pandas_object(df).sum())
         except TypeError:
-            logging.warning(
+            _LOGGER.warning(
                 "DataFrame contains non-hashable data, attempting type conversion..."
             )
 
@@ -560,12 +767,16 @@ def AgGrid(
                     )
                 return str(pd.util.hash_pandas_object(df_copy).sum())
             except (TypeError, ValueError, AttributeError) as e:
-                logging.warning(
+                _LOGGER.warning(
                     f"Type conversion failed ({e}), falling back to string-based hashing..."
                 )
                 return str(hash(df.to_string()))
 
-    data_hash = _compute_data_hash(data)
+    # Hash the frame that is actually on the wire, not the ``data`` local: the
+    # frontend refreshes rows only when data_hash changes, so hashing None under
+    # use_json_serialization=True pinned the hash at "" and froze the grid on
+    # whatever rows it mounted with.
+    data_hash = _compute_data_hash(sent_frame)
 
     # In CCv2, all data goes through JSON via the `data=` parameter.
     # Convert DataFrame to records for JSON serialization. Missing values
@@ -577,31 +788,31 @@ def AgGrid(
     else:
         row_data = None
 
-    component_data = dict(
-        row_data=row_data,
-        data_hash=data_hash,
-        gridOptions=gridOptions,
-        height=height,
-        data_return_mode=data_return_mode,
-        frame_dtypes=str(frame_dtypes),
-        allow_unsafe_jscode=allow_unsafe_jscode,
-        columns_state=columns_state,
-        custom_css=custom_css,
-        enable_enterprise_modules=enable_enterprise_modules,
-        license_key=license_key,
-        manual_update=manual_update,
-        pro_assets=pro_assets,
-        show_download_button=show_download_button,
-        show_search=show_search,
-        show_toolbar=show_toolbar,
-        custom_jscode_for_grid_return=custom_jscode_for_grid_return,
-        should_grid_return=should_grid_return,
-        theme=themeObj,
-        debug=default_column_parameters.pop("debug", False),
-        update_on=update_on,
-        use_json_serialization=use_json_serialization,
-        server_sync_strategy=server_sync_strategy,
-    )
+    component_data = {
+        "row_data": row_data,
+        "data_hash": data_hash,
+        "gridOptions": gridOptions,
+        "height": height,
+        "data_return_mode": data_return_mode,
+        "frame_dtypes": str(frame_dtypes),
+        "allow_unsafe_jscode": allow_unsafe_jscode,
+        "columns_state": columns_state,
+        "custom_css": custom_css,
+        "enable_enterprise_modules": enable_enterprise_modules,
+        "license_key": license_key,
+        "manual_update": manual_update,
+        "pro_assets": pro_assets,
+        "show_download_button": show_download_button,
+        "show_search": show_search,
+        "show_toolbar": show_toolbar,
+        "custom_jscode_for_grid_return": custom_jscode_for_grid_return,
+        "should_grid_return": should_grid_return,
+        "theme": themeObj,
+        "debug": debug,
+        "update_on": update_on,
+        "use_json_serialization": use_json_serialization,
+        "server_sync_strategy": server_sync_strategy,
+    }
 
     try:
         result = _get_component_func()(
@@ -618,7 +829,7 @@ def AgGrid(
         )
 
         if use_json_serialization == "auto" and data is not None and is_serialization_error:
-            logging.warning(
+            _LOGGER.warning(
                 f"JSON serialization failed, retrying with explicit JSON conversion: {error_msg}"
             )
             # Retry with JSON serialization enabled
@@ -633,23 +844,19 @@ def AgGrid(
             )
             component_value = result.grid_return if result else None
         else:
-            args = list(ex.args)
-            args[0] += (
-                ". If you're using custom JsCode objects on gridOptions, ensure that allow_unsafe_jscode is True."
+            _reraise_with_hint(
+                ex,
+                "If you're using custom JsCode objects on gridOptions, ensure that allow_unsafe_jscode is True.",
             )
-            raise type(ex)(*args)
 
     # Update the response object with final component data
     try:
         response = collector.update_response(response, component_value)
     except Exception as ex:
         # Enhanced error message for collector issues
-        args = list(ex.args)
-        args[0] += f". Error in {collector.__class__.__name__} processing."
+        hint = f"Error in {collector.__class__.__name__} processing."
         if data_return_mode == DataReturnMode.CUSTOM:
-            args[0] += (
-                " Check your custom_jscode_for_grid_return JsCode implementation."
-            )
-        raise type(ex)(*args)
+            hint += " Check your custom_jscode_for_grid_return JsCode implementation."
+        _reraise_with_hint(ex, hint)
 
     return response

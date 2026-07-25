@@ -1,10 +1,9 @@
-"""What's new in AG Grid v35 — highlights and runnable examples."""
+"""What's new in AG Grid v35: highlights and runnable examples."""
 
 import pandas as pd
 import streamlit as st
 
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
-
 
 st.markdown(
     "AG Grid v35 (released March 2026, current patch **35.3.0**) ships a batch of "

@@ -2,10 +2,11 @@
 Legacy collector that maintains backward compatibility with AgGridReturn
 """
 
-from typing import Any, Dict
-from .base import BaseCollector
+from typing import Any
+
 from ..AgGridReturn import AgGridReturn
 from ..shared import DataReturnMode
+from .base import BaseCollector
 
 
 class LegacyCollector(BaseCollector):
@@ -38,7 +39,7 @@ class LegacyCollector(BaseCollector):
         self.try_to_convert_back_to_original_types=try_to_convert_back_to_original_types
         self.conversion_errors=conversion_errors
     
-    def create_initial_response(self, original_data: Any, grid_options: Dict, **kwargs) -> AgGridReturn:
+    def create_initial_response(self, original_data: Any, grid_options: dict, **kwargs) -> AgGridReturn:
         """
         Create an initial AgGridReturn object that can be safely referenced by callbacks
         """
@@ -61,7 +62,7 @@ class LegacyCollector(BaseCollector):
             response._set_component_value(component_value)
         return response
     
-    def process_response(self, component_value: Any, original_data: Any, grid_options: Dict) -> AgGridReturn:
+    def process_response(self, component_value: Any, original_data: Any, grid_options: dict) -> AgGridReturn:
         """
         Process response using the original AgGrid logic
         

@@ -156,7 +156,8 @@ class ThemeParser {
     customRecipe(gridOptionsTheme: stAggridThemeOptions) : Theme {
         const {base, params, parts} = gridOptionsTheme
 
-        let theme: Theme = this.baseMapper[base]
+        // A custom theme built without an explicit base still has to render.
+        let theme: Theme = this.baseMapper[base] ?? this.baseMapper['quartz']
 
         if (! isEmpty(params)){
             theme = theme.withParams(params)

@@ -1,8 +1,10 @@
-"""Row selection — single and multi-row selection with checkboxes."""
+"""Row selection: single and multi-row selection with checkboxes."""
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder
+
 from utils.data import get_sample_data
 
 df = get_sample_data()

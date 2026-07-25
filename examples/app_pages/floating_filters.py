@@ -1,7 +1,9 @@
-"""Floating Filters — inline filter inputs under each column header."""
+"""Floating Filters: inline filter inputs under each column header."""
 
 import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder
+
 from utils.data import get_sample_data
 
 df = get_sample_data()

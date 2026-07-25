@@ -6,6 +6,7 @@ key= prop, and the CCv2 component mounts at `.stBidiComponent` inside it.
 AG Grid then renders `.ag-root` etc. directly in the page DOM.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -13,9 +14,19 @@ from playwright.sync_api import Page, expect
 
 from e2e_utils import StreamlitRunner
 
+# Selects this file into the e2e CI job and out of the browser-less one.
+pytestmark = pytest.mark.browser
 
 ROOT_DIRECTORY = Path(__file__).parent.parent.absolute()
 FIXTURE_APP = ROOT_DIRECTORY / "test" / "ccv2_e2e_app.py"
+
+# Every assertion that waits on a Streamlit rerun is racing a full round trip:
+# grid event -> websocket -> script rerun -> re-render of every grid on the
+# fixture page. The page carries a dozen AG Grid instances behind a 6 MB
+# bundle, and the default 5s expect timeout is close enough to that round trip
+# to flake. This is a wait ceiling, not a delay: passing assertions still
+# return as soon as the value lands.
+expect.set_options(timeout=20_000)
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -185,12 +196,18 @@ def test_update_on_cell_value_changed_roundtrip(page: Page):
     expect(echo).to_contain_text("zzz")
 
 
-def test_manual_update_button_returns_grid_state(page: Page):
-    """update_mode='MANUAL' shows a toolbar update button; clicking it must
-    send the current grid state (including a local edit) back to Python.
+def test_manual_update_button_is_the_only_return_path(page: Page):
+    """update_mode='MANUAL' shows a toolbar update button that is the *only*
+    way the grid returns data.
 
-    Regression guard: the button's handler used to be a debug console.log
-    only, so clicking it never returned anything."""
+    Two regression guards in one flow. First, MANUAL used to attach the
+    default update_on events anyway (cellValueChanged among them), so the edit
+    below returned data on its own and the button was one trigger among
+    several; this grid passes no update_on, so an edit that reaches Python
+    before the click means MANUAL is not exclusive. Second, the button's
+    handler used to be a debug console.log only, so clicking it never returned
+    anything.
+    """
     grid = _grid(page, "manual_update_grid")
     expect(grid.locator(".ag-root")).to_be_visible()
 
@@ -203,13 +220,165 @@ def test_manual_update_button_returns_grid_state(page: Page):
     page.keyboard.type("edited")
     page.keyboard.press("Enter")
 
-    # The edit alone must not rerun Streamlit (update_on only listens for
-    # columnPinned, which never fires here).
-    page.wait_for_timeout(500)
+    # The edit alone must not rerun Streamlit: with no update_on passed,
+    # MANUAL has to leave the grid with no event triggers at all.
+    page.wait_for_timeout(1000)
     expect(echo).not_to_contain_text("edited")
 
     grid.locator(".grid-toolbar .update-button").click()
     expect(echo).to_contain_text("edited")
+
+
+def test_manual_update_grid_does_not_return_on_selection(page: Page):
+    """The other half of MANUAL exclusivity: selectionChanged is in the
+    default update_on set, so a row click used to rerun Streamlit too."""
+    grid = _grid(page, "manual_update_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+
+    echo = page.get_by_test_id("manual-update-data")
+    expect(echo).to_contain_text("m1")
+
+    cell = grid.locator(".ag-row[row-index='1'] .ag-cell[col-id='item']").first
+    cell.dblclick()
+    page.keyboard.type("selection-probe")
+    page.keyboard.press("Enter")
+    grid.locator(".ag-row[row-index='0'] .ag-cell[col-id='item']").first.click()
+
+    page.wait_for_timeout(1000)
+    expect(echo).not_to_contain_text("selection-probe")
+
+
+def test_columns_state_is_applied_on_mount(page: Page):
+    """A columns_state present from the first render has to be applied.
+
+    Regression guard: it was applied only from componentDidUpdate, and only
+    when it differed from prevProps, so restoring a saved layout did nothing
+    on mount and nothing on a rerun that kept the same state. The fixture
+    state reverses the order and hides 'bravo'.
+    """
+    grid = _grid(page, "columns_state_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+
+    headers = grid.locator(".ag-header-cell-text")
+    expect(headers).to_have_count(2)
+    expect(headers.nth(0)).to_have_text("charlie")
+    expect(headers.nth(1)).to_have_text("alpha")
+    expect(grid.locator(".ag-header-cell[col-id='bravo']")).to_have_count(0)
+
+
+def test_grid_options_change_does_not_push_rowdata_as_a_string(page: Page):
+    """A rerun that changes a gridOption must not hand AG Grid a rowData
+    string.
+
+    Regression guard: componentDidUpdate pushed the whole cloned gridOptions
+    into updateGridOptions, and under use_json_serialization=True that object
+    still carries rowData as a raw JSON string.
+
+    The assertion is on the console rather than on the rows because AG Grid
+    35.3 defends itself: it rejects the malformed value with
+    "warning #1 `rowData` must be an array" and keeps the rows it already had.
+    That warning is the whole visible symptom, so it is what the test watches.
+    A row-count assertion here would pass against the unfixed code and is
+    therefore worthless; the count check below is only a sanity floor.
+    """
+    grid = _grid(page, "json_rerun_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    expect(grid.locator(".ag-row")).to_have_count(3)
+
+    messages: list[str] = []
+    page.on("console", lambda m: messages.append(m.text))
+
+    page.get_by_test_id("stButton").filter(has_text="bump json rerun").click()
+
+    # The rerun changes rowHeight only. Waiting on the applied height is what
+    # proves componentDidUpdate ran at all, so an absent warning below means
+    # "did not happen", not "never got there".
+    expect(grid.locator(".ag-row").first).to_have_css("height", "31px")
+
+    offending = [m for m in messages if re.search(r"rowData.*must be an array", m)]
+    assert not offending, (
+        "gridOptions update pushed rowData into AG Grid as a raw JSON string: "
+        f"{offending}"
+    )
+    expect(grid.locator(".ag-row")).to_have_count(3)
+
+
+def test_minimal_data_return_mode_returns_rows(page: Page):
+    """DataReturnMode.MINIMAL must deliver rows and the selection to Python.
+
+    Regression guard: MINIMAL routed to the TypeScript LegacyCollector, whose
+    payload is {nodes, gridState, columnsState, ...}. MinimalResponse reads
+    {data, selectedRows}, so .data was always None and .selected_rows always
+    empty.
+
+    The first-render assertion is the second guard: MinimalCollector's initial
+    response dropped original_data on the floor, so .data was None until an
+    update_on event fired. Every other mode hands back the input frame on load,
+    and under update_mode=MANUAL (which attaches no events) None was all a
+    caller ever got before clicking the toolbar button.
+    """
+    grid = _grid(page, "minimal_return_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    expect(grid.locator(".ag-row")).to_have_count(3)
+
+    data_echo = page.get_by_test_id("minimal-data")
+    selected_echo = page.get_by_test_id("minimal-selected")
+    # First render, before any interaction: the input frame, not None.
+    expect(data_echo).not_to_contain_text("NONE")
+    expect(data_echo).to_contain_text("min-a")
+    expect(selected_echo).to_contain_text("NONE")
+
+    grid.locator(".ag-row[row-index='1'] .ag-cell").first.click()
+
+    expect(data_echo).not_to_contain_text("NONE")
+    expect(data_echo).to_contain_text("min-a")
+    expect(data_echo).to_contain_text("min-c")
+    expect(selected_echo).not_to_contain_text("NONE")
+    expect(selected_echo).to_contain_text("min-b")
+    # MINIMAL exists to keep the payload small: the internal id column and the
+    # legacy node metadata must not be in it.
+    expect(data_echo).not_to_contain_text("::auto_unique_id::")
+    expect(data_echo).not_to_contain_text("rowIndex")
+
+
+def test_minimal_reports_a_selected_row_that_a_filter_hides(page: Page):
+    """A selected row must stay in selected_rows once a filter hides it.
+
+    AG Grid does not deselect a row when a filter stops displaying it, and
+    MinimalCollector used to pick selections up during its post-filter display
+    walk, so a hidden selected row silently vanished from the selection while
+    every other data return mode still reported it. That breaks the ordinary
+    "tick some rows, then act on them" flow with no error: the handler just
+    receives fewer rows than the user ticked.
+    """
+    grid = _grid(page, "minimal_hidden_selection_grid")
+    expect(grid.locator(".ag-root")).to_be_visible()
+    expect(grid.locator(".ag-row")).to_have_count(3)
+
+    data_echo = page.get_by_test_id("hidden-data")
+    selected_echo = page.get_by_test_id("hidden-selected")
+
+    # Tick keep-a and gone-c. Checkbox clicks, so both land as one selection.
+    grid.locator(".ag-row[row-index='0'] .ag-selection-checkbox").first.click()
+    expect(selected_echo).to_contain_text("keep-a")
+    grid.locator(".ag-row[row-index='2'] .ag-selection-checkbox").first.click()
+    expect(selected_echo).to_contain_text("gone-c")
+
+    # Filter so that gone-c is no longer displayed. The row stays selected.
+    # "Search..." is the toolbar's own input. The separate QuickSearch.tsx
+    # component uses "quickfilter..." but nothing renders it.
+    grid.get_by_placeholder("Search...").fill("keep")
+
+    # Proves the filter actually took effect, so the assertion below is about
+    # the selection and not about a filter that quietly did nothing.
+    expect(grid.locator(".ag-row")).to_have_count(2)
+    expect(data_echo).not_to_contain_text("gone-c")
+
+    # The whole point: still selected, still reported, though not displayed.
+    expect(selected_echo).to_contain_text("gone-c")
+    expect(selected_echo).to_contain_text("keep-a")
+    # And the payload stays lean.
+    expect(selected_echo).not_to_contain_text("::auto_unique_id::")
 
 
 def test_columns_auto_size_mode_fit_contents(page: Page):

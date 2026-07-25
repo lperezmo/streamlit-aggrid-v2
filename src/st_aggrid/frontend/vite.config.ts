@@ -11,7 +11,7 @@ export default defineConfig(() => {
 
   return {
     base: "./",
-    publicDir: false, // Don't copy public/ files — CCv2 doesn't need them
+    publicDir: false, // Don't copy public/ files: CCv2 doesn't need them
     plugins: [react()],
     define: {
       "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
@@ -32,7 +32,7 @@ export default defineConfig(() => {
         fileName: "index-[hash]",
       },
       rollupOptions: {
-        // Don't externalize anything — bundle everything for the component
+        // Don't externalize anything: bundle everything for the component
         output: {
           assetFileNames: "index-[hash][extname]",
         },

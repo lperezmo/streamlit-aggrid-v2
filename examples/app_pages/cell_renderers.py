@@ -1,7 +1,9 @@
-"""Cell Renderers — buttons, badges, and progress bars inside cells."""
+"""Cell Renderers: buttons, badges, and progress bars inside cells."""
 
 import streamlit as st
+
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+
 from utils.data import get_sample_data
 
 df = get_sample_data()

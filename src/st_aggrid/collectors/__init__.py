@@ -8,16 +8,16 @@ This module provides different collector strategies for processing AgGrid respon
 """
 
 from .base import BaseCollector
-from .legacy import LegacyCollector
 from .custom import CustomCollector, CustomResponse
-from .minimal import MinimalCollector, MinimalResponse
 from .factory import determine_collector, validate_collector_params
+from .legacy import LegacyCollector
+from .minimal import MinimalCollector, MinimalResponse
 
 __all__ = [
     'BaseCollector',
-    'LegacyCollector', 
     'CustomCollector',
     'CustomResponse',
+    'LegacyCollector',
     'MinimalCollector',
     'MinimalResponse',
     'determine_collector',

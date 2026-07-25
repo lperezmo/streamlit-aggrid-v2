@@ -1,8 +1,9 @@
-"""st-aggrid example app — basic grid with editing and selection."""
+"""st-aggrid example app: basic grid with editing and selection."""
 
-import streamlit as st
 import pandas as pd
-from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode
+import streamlit as st
+
+from st_aggrid import AgGrid, DataReturnMode, GridOptionsBuilder
 
 st.set_page_config(page_title="st-aggrid demo", layout="wide")
 st.title("st-aggrid demo")

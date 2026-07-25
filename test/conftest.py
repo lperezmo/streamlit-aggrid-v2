@@ -14,9 +14,19 @@ A non-editable install (built wheel) ships `st_aggrid/pyproject.toml` as a data
 file inside the distribution, so `_pyproject_via_dist_files` finds it. This
 fixture builds and force-installs the wheel before the test session runs.
 
-The legacy `test_grid_*.py` files target the CCv1 iframe pattern that the v2
-component no longer uses. They're excluded via `collect_ignore` until they're
-ported. The current end-to-end suite lives in `test_ccv2_e2e.py`.
+Suite layout:
+
+- `test_python_layer.py`, `test_aggrid_call_regressions.py` and
+  `test_legacy_coverage.py` are browser-less and run in milliseconds. Anything
+  observable from Python belongs there.
+- `test_registration_smoke.py` checks CCv2 discovery on the installed
+  Streamlit without a server or a browser.
+- `test_ccv2_e2e.py` and `test_ccv2_legacy_port.py` are the Playwright suites,
+  for behavior that only exists in a browser.
+
+The legacy CCv1 (iframe) `test_grid_*.py` files that used to be excluded here
+via `collect_ignore` are gone; their surviving coverage was ported, and
+`test_legacy_coverage.py` documents the decision for each one.
 """
 
 from __future__ import annotations
@@ -24,7 +34,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
-
 
 _ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,13 +58,3 @@ def _ensure_wheel_install() -> None:
 
 
 _ensure_wheel_install()
-
-
-# Legacy CCv1 iframe-based tests. They'll be ported as part of the migration.
-collect_ignore = [
-    "test_grid_initialization.py",
-    "test_grid_return.py",
-    "test_grid_data_render.py",
-    "test_grid_drag_and_drop_example.py",
-    "test_grid_performance.py",
-]

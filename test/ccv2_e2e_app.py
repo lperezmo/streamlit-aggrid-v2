@@ -15,7 +15,6 @@ import streamlit as st
 
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
 
-
 st.title("CCv2 e2e tests")
 
 # 1) DataFrame
@@ -151,8 +150,8 @@ st.html(
 
 # 9) Manual update: with update_mode="MANUAL" the toolbar shows an update
 # button that must send the current grid state (including local edits) back
-# to Python when clicked. update_on is pinned to an event the test never
-# fires so the button is the only return path.
+# to Python when clicked. No update_on is passed on purpose: MANUAL is
+# exclusive, so the button has to be the only return path all by itself.
 manual_df = pd.DataFrame({"item": ["m1", "m2"], "val": [1, 2]})
 manual_options = {
     "columnDefs": [
@@ -170,7 +169,6 @@ manual_result = AgGrid(
     manual_options,
     update_mode="MANUAL",
     show_toolbar=True,
-    update_on=["columnPinned"],
     key="manual_update_grid",
 )
 st.html(
@@ -207,4 +205,127 @@ AgGrid(
     gridOptions=gb_autosize.build(),
     columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
     key="autosize_fit_contents_grid",
+)
+
+# 11) columns_state on mount. A saved column state has to be applied the first
+# time the grid renders. It was only applied from componentDidUpdate when it
+# differed from prevProps, so a state present from the very first render (the
+# normal "restore the user's saved layout" case) was never applied at all.
+# The state below reverses the column order and hides one column, so the
+# rendered header row is unambiguous evidence either way.
+state_df = pd.DataFrame(
+    {"alpha": [1, 2], "bravo": [3, 4], "charlie": [5, 6]}
+)
+AgGrid(
+    state_df,
+    gridOptions={
+        "columnDefs": [
+            {"headerName": "alpha", "field": "alpha"},
+            {"headerName": "bravo", "field": "bravo"},
+            {"headerName": "charlie", "field": "charlie"},
+        ]
+    },
+    columns_state=[
+        {"colId": "charlie", "hide": False},
+        {"colId": "alpha", "hide": False},
+        {"colId": "bravo", "hide": True},
+    ],
+    key="columns_state_grid",
+)
+
+# 12) gridOptions change under use_json_serialization=True. A rerun that
+# changes any gridOption pushed the whole cloned gridOptions into
+# updateGridOptions, and under JSON serialization that object still carries
+# rowData as a raw JSON *string*, so AG Grid was handed a string where it
+# expects rows and the grid emptied out. Clicking the button changes rowHeight
+# and nothing else; the rows have to survive it.
+if st.button("bump json rerun", key="json_rerun_button"):
+    st.session_state["json_rerun_nonce"] = (
+        st.session_state.get("json_rerun_nonce", 0) + 1
+    )
+json_rerun_nonce = st.session_state.get("json_rerun_nonce", 0)
+json_rerun_df = pd.DataFrame({"sku": ["js-1", "js-2", "js-3"], "qty": [1, 2, 3]})
+AgGrid(
+    json_rerun_df,
+    {
+        "columnDefs": [
+            {"headerName": "SKU", "field": "sku"},
+            {"headerName": "Qty", "field": "qty"},
+        ],
+        "rowHeight": 30 + json_rerun_nonce,
+    },
+    use_json_serialization=True,
+    key="json_rerun_grid",
+)
+
+# 13) DataReturnMode.MINIMAL. MINIMAL routed to the TypeScript LegacyCollector,
+# whose payload is {nodes, gridState, columnsState, ...}. MinimalResponse reads
+# {data, selectedRows}, so .data came back None and .selected_rows came back
+# empty no matter what the user did. Selecting a row must now deliver both.
+minimal_df = pd.DataFrame({"tag": ["min-a", "min-b", "min-c"], "n": [1, 2, 3]})
+gb_minimal = GridOptionsBuilder.from_dataframe(minimal_df)
+gb_minimal.configure_selection(selection_mode="single", use_checkbox=False)
+minimal_result = AgGrid(
+    minimal_df,
+    gridOptions=gb_minimal.build(),
+    data_return_mode="MINIMAL",
+    update_on=["selectionChanged"],
+    key="minimal_return_grid",
+)
+minimal_data = minimal_result.data
+minimal_selected = minimal_result.selected_rows
+
+
+def _dump_minimal(value):
+    """Render MINIMAL payloads as JSON records.
+
+    Before the frontend reports anything, ``.data`` is the input DataFrame,
+    which is what every other data_return_mode returns on a first render. After
+    a return it is the list of record dicts the TypeScript MinimalCollector
+    sends. Both have to land in the same <pre> for the test to compare them.
+    """
+    if value is None:
+        return "NONE"
+    if isinstance(value, pd.DataFrame):
+        return json.dumps(value.to_dict("records"))
+    if not len(value):
+        return "NONE"
+    return json.dumps(value)
+
+
+st.html(
+    f"""
+    <h2>minimal return</h2>
+    <pre data-testid='minimal-data'>{_dump_minimal(minimal_data)}</pre>
+    <pre data-testid='minimal-selected'>{_dump_minimal(minimal_selected)}</pre>
+    """
+)
+
+# 14) MINIMAL with a selected row that a filter hides. Selections used to be
+# picked up during the post-filter display walk, so a selected row the quick
+# filter was hiding silently disappeared from .selected_rows, while every other
+# data return mode still reported it (LegacyCollector walks every node and
+# Python filters on isSelected). They now come from getSelectedNodes().
+hidden_sel_df = pd.DataFrame(
+    {"tag": ["keep-a", "keep-b", "gone-c"], "n": [1, 2, 3]}
+)
+gb_hidden = GridOptionsBuilder.from_dataframe(hidden_sel_df)
+gb_hidden.configure_selection(selection_mode="multiple", use_checkbox=True)
+hidden_result = AgGrid(
+    hidden_sel_df,
+    gridOptions=gb_hidden.build(),
+    data_return_mode="MINIMAL",
+    # filterChanged is what carries the quick-filter change back to Python.
+    update_on=["selectionChanged", "filterChanged"],
+    show_toolbar=True,
+    show_search=True,
+    key="minimal_hidden_selection_grid",
+)
+
+st.html(
+    f"""
+    <h2>minimal hidden selection</h2>
+    <pre data-testid='hidden-data'>{_dump_minimal(hidden_result.data)}</pre>
+    <pre data-testid='hidden-selected'>{_dump_minimal(hidden_result.selected_rows)}</pre>
+    """
 )

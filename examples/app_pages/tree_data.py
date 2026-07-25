@@ -1,4 +1,4 @@
-"""Tree data + inline buttons — AG Grid treeData with custom button cell renderers.
+"""Tree data + inline buttons: AG Grid treeData with custom button cell renderers.
 
 Shows hierarchical file data via `treeData` + `getDataPath` and three mutually-
 exclusive action buttons per row (Delete / Audit / Approve). A single flag per
