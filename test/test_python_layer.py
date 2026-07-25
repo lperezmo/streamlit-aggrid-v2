@@ -208,6 +208,68 @@ def test_build_result_is_detached_from_the_builder():
     assert "rowHeight" not in second
 
 
+def test_build_result_is_detached_at_every_level():
+    """The nested dicts must be detached too, not just the top level.
+
+    build() returned a shallow copy, so defaultColDef and every entry of
+    columnDefs were the *same* objects in the builder and in every build. The
+    top-level-only assertions above pass against that.
+    """
+    builder = GridOptionsBuilder.from_dataframe(DF)
+    builder.configure_default_column(editable=True)
+
+    first = builder.build()
+    second = builder.build()
+
+    assert first["defaultColDef"] is not second["defaultColDef"]
+    assert first["columnDefs"][0] is not second["columnDefs"][0]
+
+    first["defaultColDef"]["editable"] = "mutated"
+    first["columnDefs"][0]["headerName"] = "mutated"
+
+    third = builder.build()
+    assert third["defaultColDef"]["editable"] is True
+    assert third["columnDefs"][0].get("headerName") != "mutated"
+
+
+def test_build_survives_jscode_flattening_by_a_previous_grid():
+    """A second build() must still carry JsCode objects, not flattened strings.
+
+    AgGrid(..., allow_unsafe_jscode=True) rewrites JsCode leaves into
+    ``::JSCODE::`` strings in place via walk_gridOptions. With colDefs shared
+    across builds, the rewrite hit the builder's own dicts and every later
+    build came out pre-flattened, so the second grid got a string where the
+    frontend expects the marker-wrapped code it re-parses.
+    """
+    builder = GridOptionsBuilder.from_dataframe(DF)
+    renderer = JsCode("function(params) { return params.value }")
+    builder.configure_column("a", cellRenderer=renderer)
+
+    first = builder.build()
+    assert isinstance(first["columnDefs"][0]["cellRenderer"], JsCode)
+    # What AgGrid() does to gridOptions when allow_unsafe_jscode is on.
+    walk_gridOptions(first, lambda v: v.js_code if isinstance(v, JsCode) else v)
+    assert isinstance(first["columnDefs"][0]["cellRenderer"], str)
+
+    second = builder.build()
+    assert isinstance(second["columnDefs"][0]["cellRenderer"], JsCode)
+    # JsCode objects are shared, not copied: callers compare against the object
+    # they handed in.
+    assert second["columnDefs"][0]["cellRenderer"] is renderer
+
+
+def test_build_shares_callables_instead_of_copying_them():
+    """User callables inside gridOptions must survive the copy by identity."""
+
+    def get_row_id(params):
+        return params["data"]["a"]
+
+    builder = GridOptionsBuilder.from_dataframe(DF)
+    builder.configure_grid_options(getRowId=get_row_id)
+
+    assert builder.build()["getRowId"] is get_row_id
+
+
 # ---------------------------------------------------------------------------
 # walk_gridOptions
 # ---------------------------------------------------------------------------
