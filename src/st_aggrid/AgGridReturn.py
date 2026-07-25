@@ -14,6 +14,34 @@ from st_aggrid.shared import DataReturnMode
 _LOGGER = logging.getLogger(__name__)
 
 
+def _parse_datetimes(column, errors, dtype):
+    """Parse ISO strings back to ``dtype``, keeping the original time zone.
+
+    Parsing without ``utc=True`` asks pandas to infer one zone for the whole
+    column, and a tz-aware column that crosses a daylight-saving boundary
+    carries two different offsets: one row at -08:00 and the next at -07:00.
+    pandas 2 warns and degrades to object dtype, pandas 3 raises "Mixed
+    timezones detected". ``conversion_errors`` cannot soften that, because the
+    failure is in parsing the column rather than in any single cell, so even
+    "coerce" propagates it.
+
+    Normalizing through UTC removes the inference entirely, and the zone is
+    then restored from ``dtype``, which is the real source of truth. The offset
+    in the string cannot say *which* zone produced it, so on its own it could
+    not survive the next DST transition; the dtype still names
+    America/Los_Angeles.
+    """
+    parsed = pd.to_datetime(column, errors=errors, utc=True)
+    tz = getattr(dtype, "tz", None)
+    if tz is None:
+        # Naive input was serialized without an offset, so reading it as UTC
+        # and dropping the zone again returns the same wall-clock time.
+        parsed = parsed.dt.tz_localize(None)
+    else:
+        parsed = parsed.dt.tz_convert(tz)
+    return parsed.astype(dtype)
+
+
 class AgGridReturn(Mapping):
     """
     Container for AgGrid component response data.
@@ -150,9 +178,9 @@ class AgGridReturn(Mapping):
                 converted_columns.append(
                     self._convert_with_error_policy(
                         column,
-                        lambda col, errors, dtype=original_dtype: pd.to_datetime(
-                            col, errors=errors
-                        ).astype(dtype, copy=False),
+                        lambda col, errors, dtype=original_dtype: _parse_datetimes(
+                            col, errors, dtype
+                        ),
                     )
                 )
             elif dtype_kind == "m":  # Timedelta
@@ -169,7 +197,14 @@ class AgGridReturn(Mapping):
         if not converted_columns:
             return data
 
-        return pd.concat(converted_columns, axis=1, copy=False)
+        # No copy= here. pandas 3 made copy-on-write unconditional, so the
+        # keyword asks for behavior it already has and is deprecated; pandas 4
+        # removes it, and this line is on the path of every response.data
+        # access, so a TypeError here takes out the whole return value rather
+        # than one column. On pandas 2 this costs one eager copy of the result.
+        # The .astype(..., copy=False) calls above are a different keyword and
+        # are not deprecated.
+        return pd.concat(converted_columns, axis=1)
 
     def _convert_with_error_policy(self, column, converter):
         """Run ``converter(column, errors)`` honoring conversion_errors.

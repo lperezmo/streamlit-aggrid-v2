@@ -7,6 +7,7 @@ milliseconds, so regressions in input handling are caught without Playwright.
 
 import json
 import math
+import warnings
 
 import pandas as pd
 import pytest
@@ -319,6 +320,113 @@ def test_walk_grid_options_handles_nested_lists():
 # ---------------------------------------------------------------------------
 # Datetime handling
 # ---------------------------------------------------------------------------
+
+
+def _round_trip(frame):
+    """Send ``frame`` out the real parse path and bring it back as the grid would.
+
+    Returns (recorded_dtypes, wire_values, returned_frame).
+    """
+    sent, _go, dtypes = _parse(frame.copy(), None)
+    wire = list(sent[frame.columns[0]])
+    nodes = [
+        {
+            "id": str(i),
+            "rowIndex": i,
+            "data": {frame.columns[0]: value},
+        }
+        for i, value in enumerate(wire)
+    ]
+    response = AgGridReturn(originalData=frame, frame_dtypes=dtypes)
+    response._set_component_value(
+        {
+            "nodes": nodes,
+            "rowIdsAfterFilter": [n["id"] for n in nodes],
+            "rowIdsAfterSortAndFilter": [n["id"] for n in nodes],
+        }
+    )
+    return dtypes, wire, response.data
+
+
+DATETIME_COLUMNS = {
+    "naive": pd.to_datetime(["2024-01-15 12:00", "2024-07-15 12:00"]),
+    "utc": pd.to_datetime(["2024-01-15 12:00", "2024-07-15 12:00"]).tz_localize("UTC"),
+    # Two rows either side of a DST change, so the ISO strings carry two
+    # different offsets (-08:00 and -07:00) in one column.
+    "dst_straddle": pd.to_datetime(
+        ["2024-01-15 12:00", "2024-07-15 12:00"]
+    ).tz_localize("America/Los_Angeles"),
+}
+
+
+@pytest.mark.parametrize("label", list(DATETIME_COLUMNS))
+def test_datetime_dtype_is_recorded_before_the_iso_conversion(label):
+    """The dtypes were captured after datetime columns had been overwritten
+    with ISO strings, so they recorded kind "O" and AgGridReturn's datetime
+    branch could never run on the data= path."""
+    frame = pd.DataFrame({"when": DATETIME_COLUMNS[label]})
+
+    _sent, _go, dtypes = _parse(frame.copy(), None)
+
+    assert dtypes["when"].kind == "M", (
+        f"recorded {dtypes['when']!r}, so the datetime branch stays unreachable"
+    )
+
+
+@pytest.mark.parametrize("label", list(DATETIME_COLUMNS))
+def test_datetime_columns_round_trip_to_timestamps(label):
+    """A datetime column has to come back as Timestamps, not ISO strings.
+
+    Includes the tz-aware DST straddle, which is the case that used to fail
+    differently on each pandas: 2 warned and degraded to object dtype, 3 raised
+    "Mixed timezones detected" and conversion_errors could not soften it,
+    because the failure is in parsing the column rather than in one cell.
+    """
+    original = DATETIME_COLUMNS[label]
+    frame = pd.DataFrame({"when": original})
+
+    _dtypes, wire, returned = _round_trip(frame)
+
+    # The wire format is unchanged: the grid still receives ISO strings.
+    assert isinstance(wire[0], str) and wire[0].startswith("2024-01-15T12:00:00")
+
+    assert returned["when"].dtype == frame["when"].dtype
+    assert list(returned["when"]) == list(original)
+
+
+def test_tz_aware_round_trip_keeps_the_zone_not_just_the_offset():
+    """The zone has to be restored from the dtype, not inferred from the
+    offset in the string. -08:00 alone cannot say which zone produced it, so
+    the next DST transition would be wrong."""
+    frame = pd.DataFrame({"when": DATETIME_COLUMNS["dst_straddle"]})
+
+    _dtypes, _wire, returned = _round_trip(frame)
+
+    assert str(returned["when"].dtype.tz) == "America/Los_Angeles"
+
+
+def test_datetime_round_trip_emits_no_pandas_deprecations():
+    """Guards two pandas deprecations at once on the response path.
+
+    Parsing mixed offsets without utc=True raised a FutureWarning on pandas 2
+    before it became an error on 3, and pd.concat(copy=False) raises a
+    Pandas4Warning on pandas 3. Neither warns on every version, so this test is
+    only a real guard on the versions where the warning exists; it is cheap
+    insurance for the CI matrix rather than proof on any single interpreter.
+    """
+    frame = pd.DataFrame({"when": DATETIME_COLUMNS["dst_straddle"]})
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _round_trip(frame)
+
+    offenders = [
+        str(w.message)
+        for w in caught
+        if "mixed time zones" in str(w.message).lower()
+        or "copy keyword" in str(w.message).lower()
+    ]
+    assert not offenders, offenders
 
 
 def test_missing_datetimes_do_not_serialize_as_the_string_nat():

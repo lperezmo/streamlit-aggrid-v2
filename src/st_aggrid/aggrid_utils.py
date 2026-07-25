@@ -104,10 +104,17 @@ def _parse_data_and_grid_options(
             data = data.to_pandas(use_pyarrow_extension_array=False)
 
         if isinstance(data, pd.DataFrame):
+            # Recorded BEFORE the ISO conversion below, which overwrites every
+            # datetime column with object-dtype strings. Capturing afterwards
+            # stored kind "O" for those columns, so AgGridReturn's datetime
+            # branch was unreachable on this path and a datetime column came
+            # back from the grid as ISO strings rather than Timestamps.
+            column_types = data.dtypes.copy()
+
             # converts date columns to iso format. Missing values must stay
             # empty: pd.NaT.isoformat() returns the string "NaT", which would
             # be rendered literally in cells, quick search and CSV export.
-            for c, d in data.dtypes.items():
+            for c, d in column_types.items():
                 if d.kind == "M":
                     # Built as an explicit object Series rather than with
                     # .apply(). pandas 3.0 infers its new `str` dtype from a
@@ -126,8 +133,12 @@ def _parse_data_and_grid_options(
             gb = GridOptionsBuilder.from_dataframe(data, **default_column_parameters)
             grid_options = gb.build()
 
-        # computes rows data types before adding id column
-        column_types = data.dtypes
+        # Only for the path where data is not a DataFrame by this point. The
+        # DataFrame case recorded its dtypes above, before the ISO conversion,
+        # and must not be overwritten with the post-conversion ones. Either way
+        # this happens before the id column is added, so it stays out.
+        if column_types is None:
+            column_types = data.dtypes
 
     # if data is supplied via gridOptions.rowData move it to data parameter.
     # This runs for every serialization mode. It used to be skipped under
