@@ -198,6 +198,57 @@ def test_row_data_in_grid_options_is_still_moved_without_json_serialization(monk
 
 
 # ---------------------------------------------------------------------------
+# DataReturnMode.MINIMAL first render
+# ---------------------------------------------------------------------------
+
+
+def test_minimal_mode_returns_the_input_frame_before_the_first_response(monkeypatch):
+    """MINIMAL must hand back the input frame on a first render.
+
+    Every other mode does. MinimalCollector.create_initial_response ignored
+    original_data and returned a bare MinimalResponse, so ``.data`` was None
+    until an update_on event fired. Under update_mode=MANUAL, which attaches
+    no events at all, that meant None until the toolbar button was clicked.
+    """
+    call = render_grid(monkeypatch, DF.copy(), key="mn1", data_return_mode="MINIMAL")
+
+    data = call.response.data
+    assert data is not None, "MINIMAL returns .data None on a first render"
+    assert isinstance(data, pd.DataFrame)
+    assert list(data["ints"]) == [1, 2, 3]
+    # The internal id column is added by the parser and must not be reported.
+    assert "::auto_unique_id::" not in data.columns
+    assert call.response.selected_rows == []
+
+
+def test_minimal_mode_still_reports_the_grid_rows_once_they_arrive(monkeypatch):
+    """The input frame is only a placeholder: a real response wins."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="mn2",
+        data_return_mode="MINIMAL",
+        grid_return={"data": [{"ints": 2, "floats": 2.5}], "selectedRows": []},
+    )
+
+    assert call.response.data == [{"ints": 2, "floats": 2.5}]
+
+
+def test_minimal_mode_reports_an_empty_grid_as_empty(monkeypatch):
+    """A response that filtered every row away must report no rows, not fall
+    back to the input frame."""
+    call = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="mn3",
+        data_return_mode="MINIMAL",
+        grid_return={"data": [], "selectedRows": []},
+    )
+
+    assert call.response.data == []
+
+
+# ---------------------------------------------------------------------------
 # update_mode=MANUAL is exclusive
 # ---------------------------------------------------------------------------
 

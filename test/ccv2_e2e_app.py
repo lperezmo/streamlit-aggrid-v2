@@ -274,14 +274,29 @@ minimal_result = AgGrid(
 )
 minimal_data = minimal_result.data
 minimal_selected = minimal_result.selected_rows
+
+
+def _dump_minimal(value):
+    """Render MINIMAL payloads as JSON records.
+
+    Before the frontend reports anything, ``.data`` is the input DataFrame,
+    which is what every other data_return_mode returns on a first render. After
+    a return it is the list of record dicts the TypeScript MinimalCollector
+    sends. Both have to land in the same <pre> for the test to compare them.
+    """
+    if value is None:
+        return "NONE"
+    if isinstance(value, pd.DataFrame):
+        return json.dumps(value.to_dict("records"))
+    if not len(value):
+        return "NONE"
+    return json.dumps(value)
+
+
 st.html(
     f"""
     <h2>minimal return</h2>
-    <pre data-testid='minimal-data'>{
-        "NONE" if minimal_data is None else json.dumps(minimal_data)
-    }</pre>
-    <pre data-testid='minimal-selected'>{
-        "NONE" if not minimal_selected else json.dumps(minimal_selected)
-    }</pre>
+    <pre data-testid='minimal-data'>{_dump_minimal(minimal_data)}</pre>
+    <pre data-testid='minimal-selected'>{_dump_minimal(minimal_selected)}</pre>
     """
 )

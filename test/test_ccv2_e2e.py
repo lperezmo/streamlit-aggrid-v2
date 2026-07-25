@@ -310,6 +310,12 @@ def test_minimal_data_return_mode_returns_rows(page: Page):
     payload is {nodes, gridState, columnsState, ...}. MinimalResponse reads
     {data, selectedRows}, so .data was always None and .selected_rows always
     empty.
+
+    The first-render assertion is the second guard: MinimalCollector's initial
+    response dropped original_data on the floor, so .data was None until an
+    update_on event fired. Every other mode hands back the input frame on load,
+    and under update_mode=MANUAL (which attaches no events) None was all a
+    caller ever got before clicking the toolbar button.
     """
     grid = _grid(page, "minimal_return_grid")
     expect(grid.locator(".ag-root")).to_be_visible()
@@ -317,7 +323,10 @@ def test_minimal_data_return_mode_returns_rows(page: Page):
 
     data_echo = page.get_by_test_id("minimal-data")
     selected_echo = page.get_by_test_id("minimal-selected")
-    expect(data_echo).to_contain_text("NONE")
+    # First render, before any interaction: the input frame, not None.
+    expect(data_echo).not_to_contain_text("NONE")
+    expect(data_echo).to_contain_text("min-a")
+    expect(selected_echo).to_contain_text("NONE")
 
     grid.locator(".ag-row[row-index='1'] .ag-cell").first.click()
 
