@@ -79,7 +79,7 @@ def _quoted(fragment: str, source: str) -> set[str]:
     literals and separators. Anything else means the declaration changed shape
     and the parser needs a human, which is the whole point of failing loudly.
     """
-    without_comments = re.sub(r"/\*.*?\*/", " ", fragment, flags=re.S)
+    without_comments = re.sub(r"/\*.*?\*/", " ", fragment, flags=re.DOTALL)
     without_comments = re.sub(r"//[^\n]*", " ", without_comments)
 
     names = set(re.findall(r"""['"]([^'"]+)['"]""", without_comments))
@@ -107,7 +107,7 @@ def _readonly_tuple(constant: str) -> set[str]:
     # Declared as `export declare const _PUBLIC_EVENTS: readonly [...]`, so
     # there is a colon rather than an assignment between name and value.
     match = re.search(
-        rf"{re.escape(constant)}\s*:\s*readonly\s*\[(.*?)\]\s*;", text, re.S
+        rf"{re.escape(constant)}\s*:\s*readonly\s*\[(.*?)\]\s*;", text, re.DOTALL
     )
     if not match:
         raise GenerationError(

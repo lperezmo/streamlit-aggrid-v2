@@ -22,8 +22,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from grid_stub import render_grid
 from st_aggrid import AgGrid
+
+from grid_stub import render_grid
 
 DF = pd.DataFrame({"ints": [1, 2, 3]})
 
@@ -58,7 +59,7 @@ def update_on_warnings(monkeypatch, **kwargs):
 def test_typo_is_reported_with_the_intended_name(monkeypatch):
     """The canonical mistake: a dropped trailing "d". The suggestion is the
     entire point, since the name looks right to the person who typed it."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="v1", update_on=["selectionChange"]
     )
 
@@ -78,7 +79,7 @@ def test_typo_is_reported_with_the_intended_name(monkeypatch):
 def test_unknown_name_without_a_close_match_gets_no_suggestion(monkeypatch):
     """A wrong guess is worse than none: it sends the reader off to fix
     something they never wrote."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="v2", update_on=["totallyMadeUpEvent"]
     )
 
@@ -114,7 +115,7 @@ def test_realistic_misspellings_all_get_a_suggestion(monkeypatch, typo, intended
     prop spelling and a plain case error, both of which look correct to whoever
     wrote them.
     """
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key=f"sugg-{typo}", update_on=[typo]
     )
 
@@ -132,7 +133,7 @@ def test_a_name_close_to_nothing_real_gets_no_suggestion(monkeypatch, typo):
     0.7 and only stops at 0.75. Between this test and the one above, the cutoff
     cannot move in either direction without something failing.
     """
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key=f"nosugg-{typo}", update_on=[typo]
     )
 
@@ -155,7 +156,7 @@ def test_the_on_prefixed_redo_events_are_not_confused_with_undo(
     Stripping the React "on" prefix and looking for an exact match resolves it
     outright instead of guessing.
     """
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key=f"redo-{typo}", update_on=[typo]
     )
 
@@ -171,7 +172,7 @@ def test_an_ambiguous_best_match_is_not_guessed_at(monkeypatch):
     prefix trick available, so the right answer is to report the bad name and
     keep quiet about which event was meant.
     """
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="ambiguous", update_on=["oXdoEnded"]
     )
 
@@ -234,7 +235,7 @@ def test_column_only_event_is_reported_as_a_column_event(monkeypatch):
 def test_row_node_only_event_is_reported_as_a_row_node_event(monkeypatch):
     """The RowNode counterpart, worded so the two cases are distinguishable:
     "dataChanged" fires per row, not on the grid."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="v5", update_on=["dataChanged"]
     )
 
@@ -249,7 +250,7 @@ def test_row_node_only_event_is_reported_as_a_row_node_event(monkeypatch):
 def test_event_that_is_both_a_column_and_a_grid_event_is_accepted(monkeypatch):
     """sortChanged is dispatched on a Column *and* on the grid api. Only the
     grid api matters for update_on, so it must pass without a word."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="v6", update_on=["sortChanged"]
     )
 
@@ -262,7 +263,7 @@ def test_event_that_is_both_a_column_and_a_grid_event_is_accepted(monkeypatch):
 
 
 def test_valid_event_names_do_not_warn(monkeypatch):
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch,
         key="v7",
         update_on=["cellClicked", "rowSelected", "paginationChanged"],
@@ -293,7 +294,7 @@ def test_the_deprecated_update_mode_path_does_not_warn(monkeypatch, update_mode)
     """Every event GridUpdateMode can contribute is a real grid event, and its
     events are merged into update_on before validation runs. A false warning
     here would be unfixable from user code: nothing they passed produced it."""
-    call, messages = update_on_warnings(monkeypatch, key="v9", update_mode=update_mode)
+    _call, messages = update_on_warnings(monkeypatch, key="v9", update_mode=update_mode)
 
     assert messages == []
 
@@ -306,7 +307,7 @@ def test_the_deprecated_update_mode_path_does_not_warn(monkeypatch, update_mode)
 def test_a_debounced_tuple_entry_is_validated_on_its_name(monkeypatch):
     """``(event, debounce_ms)`` describes the same listener as the bare name, so
     a typo inside a tuple is just as dead and must be reported the same way."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="v10", update_on=[("columnResize", 300)]
     )
 
@@ -316,7 +317,7 @@ def test_a_debounced_tuple_entry_is_validated_on_its_name(monkeypatch):
 
 
 def test_a_valid_debounced_tuple_entry_does_not_warn(monkeypatch):
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="v11", update_on=[("columnResized", 300)]
     )
 
@@ -326,7 +327,7 @@ def test_a_valid_debounced_tuple_entry_does_not_warn(monkeypatch):
 def test_a_repeated_bad_name_warns_once(monkeypatch):
     """Validation runs after the dedupe, so the report is per event and not per
     entry. The same name arriving twice is one mistake to fix."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch,
         key="v12",
         update_on=["selectionChange", ("selectionChange", 200)],
@@ -339,7 +340,7 @@ def test_a_name_shared_with_update_mode_warns_once(monkeypatch):
     """The same rule across the deprecated merge: update_mode re-adds names
     update_on already carries, and one of them being a typo is still one
     mistake."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch,
         key="v13",
         update_mode="COLUMN_RESIZED",
@@ -352,7 +353,7 @@ def test_a_name_shared_with_update_mode_warns_once(monkeypatch):
 def test_every_bad_name_is_reported(monkeypatch):
     """Distinct mistakes are distinct warnings: stopping at the first would
     hide the rest behind a second run."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch,
         key="v14",
         update_on=["selectionChange", "widthChanged", "totallyMadeUpEvent"],
@@ -451,7 +452,7 @@ def test_a_bare_string_is_treated_as_one_event_not_as_its_letters(monkeypatch):
 def test_a_bare_string_with_a_typo_reports_the_event_not_a_letter(monkeypatch):
     """The wrapping happens before validation, so the diagnostic is about the
     event the caller wrote rather than about the letter 's'."""
-    call, messages = update_on_warnings(
+    _call, messages = update_on_warnings(
         monkeypatch, key="bare-typo", update_on="selectionChange"
     )
 
