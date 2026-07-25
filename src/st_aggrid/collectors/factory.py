@@ -106,39 +106,3 @@ def determine_collector(
     
     else:
         raise ValueError(f"Unsupported DataReturnMode: {data_return_mode}")
-
-
-def get_collector_info(collector: BaseCollector) -> dict:
-    """
-    Get information about a collector for debugging/logging
-    
-    Parameters
-    ----------
-    collector : BaseCollector
-        The collector to get info about
-        
-    Returns
-    -------
-    dict
-        Information about the collector
-    """
-    info = {
-        "type": collector.__class__.__name__,
-        "return_type": collector.get_return_type()
-    }
-    
-    # Add specific info for different collector types
-    if isinstance(collector, CustomCollector):
-        info["js_code_length"] = len(collector.js_code)
-        info["has_custom_logic"] = True
-    elif isinstance(collector, LegacyCollector):
-        info["data_return_mode"] = str(collector.data_return_mode)
-        info["try_convert_types"] = collector.try_to_convert_back_to_original_types
-        info["conversion_errors"] = collector.conversion_errors
-        info["has_custom_logic"] = False
-    elif isinstance(collector, MinimalCollector):
-        info["data_return_mode"] = "MINIMAL"
-        info["lightweight"] = True
-        info["has_custom_logic"] = False
-    
-    return info

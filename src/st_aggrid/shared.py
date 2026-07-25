@@ -2,7 +2,7 @@ import json
 import pathlib
 from collections.abc import Mapping
 from enum import Enum, EnumMeta, Flag, IntEnum, auto
-from typing import Literal, TypedDict
+from typing import Literal
 
 DEFAULT_COLUMN_PROPS = [
     "cellDataType",
@@ -52,12 +52,6 @@ def getAllGridOptions():
 def getAllColumnProps():
     jsonRoot = pathlib.Path(__file__).parent / "json"
     with open(jsonRoot / "columnProps.json") as f:
-        return json.load(f)
-
-
-def getAllGridEvents():
-    jsonRoot = pathlib.Path(__file__).parent / "json"
-    with open(jsonRoot / "gridEvents.json") as f:
         return json.load(f)
 
 
@@ -139,14 +133,6 @@ class JsCode:
         self.js_code = f"{js_placeholder}{one_line_jscode}{js_placeholder}"
 
 
-class JsCodeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, JsCode):
-            return o.js_code
-
-        return super().default(o)
-
-
 def walk_gridOptions(go, func):
     """Recursively walk grid options applying func at each leaf node
 
@@ -214,13 +200,6 @@ class AgGridTheme(BaseEnum):
     ALPINE = "alpine"
     BALHAM = "balham"
     MATERIAL = "material"
-
-
-class StAggridThemeType(TypedDict, total=False):
-    themeName: str
-    base: Literal["quartz", "alpine", "balham", "material"]
-    params: Mapping[str, str | int]
-    parts: list[str]
 
 
 # suclassing a dict because it is JSON serializable.
