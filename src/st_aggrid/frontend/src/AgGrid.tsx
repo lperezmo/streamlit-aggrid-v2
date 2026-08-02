@@ -21,7 +21,7 @@ import debounce from 'lodash/debounce'
 import isEqual from 'lodash/isEqual'
 import omit from 'lodash/omit'
 
-import { ThemeParser } from "./ThemeParser"
+import { ThemeParser, streamlitThemeSignature } from "./ThemeParser"
 import { CustomCollector, LegacyCollector, MinimalCollector } from "./collectors"
 import type { CollectorContext } from "./collectors"
 
@@ -51,7 +51,8 @@ class AgGrid extends React.Component<AgGridProps, State> {
   private gridContainerRef: React.RefObject<HTMLDivElement>
   private gridApiRef: GridApi | undefined = undefined
   private isGridAutoHeightOn: boolean
-  private themeParser: ThemeParser | undefined = undefined
+  private readonly themeParser: ThemeParser = new ThemeParser()
+  private lastThemeSignature: string
   private shouldGridReturn: Function | undefined = undefined
   private collectGridReturn: Function | undefined = undefined
   private eventCleanupFns: Array<() => void> = []
@@ -93,6 +94,9 @@ class AgGrid extends React.Component<AgGridProps, State> {
 
     var go = parseGridOptions(cd, props.parentElement)
     go.rowData = parseData(cd)
+    // The palette go.theme was just built from. componentDidUpdate compares
+    // against this to notice a Streamlit appearance change.
+    this.lastThemeSignature = streamlitThemeSignature(props.parentElement)
 
     const StreamlitAgGridPro = (window as any)?.StreamlitAgGridPro
     if (StreamlitAgGridPro) {
@@ -282,15 +286,26 @@ class AgGrid extends React.Component<AgGridProps, State> {
       this.gridApiRef?.updateGridOptions(go)
     }
 
-    //Theme object Changes here
-    if (
-      !isEqual(this.props.componentData.theme, prevProps.componentData?.theme)
-    ) {
-      let agGridTheme = this.props.componentData.theme
-      const themeParser = new ThemeParser()
-      const themeHost = (this.props.parentElement as any)?.host ?? this.props.parentElement
+    // Re-theme on either kind of change: the theme the app passed, and the
+    // Streamlit theme underneath it. The second one has no prop to compare
+    // against. Flipping the appearance rewrites the --st-* properties while
+    // componentData.theme stays byte-identical, and the recipes bake their
+    // colors into the AG Grid theme at parse time, so without the signature
+    // the grid keeps the palette it was first built with: switch an app to
+    // dark and the grid alone stays light until a full remount.
+    const themeSignature = streamlitThemeSignature(this.props.parentElement)
+    const themeChanged = !isEqual(
+      this.props.componentData.theme,
+      prevProps.componentData?.theme
+    )
+
+    if (themeChanged || themeSignature !== this.lastThemeSignature) {
+      this.lastThemeSignature = themeSignature
       this.gridApiRef?.updateGridOptions({
-        theme: themeParser.parse(agGridTheme, themeHost),
+        theme: this.themeParser.parse(
+          this.props.componentData.theme,
+          this.props.parentElement
+        ),
       })
     }
 

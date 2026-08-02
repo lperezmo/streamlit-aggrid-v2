@@ -27,8 +27,7 @@ export function parseGridOptions(componentData: any, parentElement?: Element | S
     //processTheming
     const themeParser = new ThemeParser()
     let agGridTheme = componentData.theme
-    const themeHost = (parentElement as any)?.host ?? parentElement ?? document.documentElement
-    gridOptions.theme = themeParser.parse(agGridTheme, themeHost)
+    gridOptions.theme = themeParser.parse(agGridTheme, parentElement)
 
     return gridOptions
 }

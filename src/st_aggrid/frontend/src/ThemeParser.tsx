@@ -33,26 +33,117 @@ interface StreamlitThemeFromCSS {
     base: 'light' | 'dark'
 }
 
-function hexToLuminance(hex: string): number {
-    const c = hex.replace('#', '')
-    const r = parseInt(c.substring(0, 2), 16) / 255
-    const g = parseInt(c.substring(2, 4), 16) / 255
-    const b = parseInt(c.substring(4, 6), 16) / 255
-    const toLinear = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
-    return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+// Every --st-* property the recipes below read. streamlitThemeSignature builds
+// the staleness check out of this list, so a property added to a recipe has to
+// be added here too or a change to it will not repaint the grid.
+const STREAMLIT_THEME_VARS = [
+    '--st-primary-color',
+    '--st-text-color',
+    '--st-background-color',
+    '--st-secondary-background-color',
+    '--st-font',
+] as const
+
+/**
+ * The element whose computed style carries the --st-* properties.
+ *
+ * With isolate_styles=False (what _compat.py always registers) this is the
+ * component's own parentElement. The `host` hop keeps this working if style
+ * isolation is ever turned on, where parentElement is a ShadowRoot and has no
+ * computed style of its own. document.documentElement is a last resort that
+ * resolves nothing useful: Streamlit declares these properties on the element
+ * container, never on :root, so reading the root returns empty strings and
+ * every lookup below silently takes its fallback.
+ */
+function resolveThemeHost(el?: Element | ShadowRoot | null): Element {
+    return (el as ShadowRoot | null)?.host ?? (el as Element | null) ?? document.documentElement
+}
+
+function parseColorChannels(color: string): [number, number, number] | null {
+    const value = color.trim()
+
+    // getComputedStyle hands back rgb()/rgba() for anything it resolved itself,
+    // such as the document background read below.
+    const rgb = value.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i)
+    if (rgb) {
+        return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
+    }
+
+    const hex = value.startsWith('#') ? value.slice(1) : ''
+    const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex
+    if (!/^[0-9a-f]{6}$/i.test(full)) {
+        return null
+    }
+    return [
+        parseInt(full.slice(0, 2), 16),
+        parseInt(full.slice(2, 4), 16),
+        parseInt(full.slice(4, 6), 16),
+    ]
+}
+
+function isDarkColor(color: string): boolean {
+    const channels = parseColorChannels(color)
+    if (!channels) {
+        return false
+    }
+    const toLinear = (v: number) => {
+        const c = v / 255
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+    }
+    const [r, g, b] = channels
+    const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+    return luminance < 0.4
+}
+
+/**
+ * Streamlit's background color, which is also what decides light vs dark.
+ *
+ * An absent --st-background-color means the read landed outside the app subtree
+ * or on a Streamlit that does not publish the property. Assuming light there
+ * puts a white grid on a dark page, so fall back to what the page actually
+ * renders before falling back to a guess.
+ */
+function resolveBackgroundColor(styles: CSSStyleDeclaration): string {
+    const fromTheme = styles.getPropertyValue('--st-background-color').trim()
+    if (fromTheme) {
+        return fromTheme
+    }
+
+    const bodyBackground = getComputedStyle(document.body).backgroundColor
+    if (bodyBackground && bodyBackground !== 'transparent' && bodyBackground !== 'rgba(0, 0, 0, 0)') {
+        return bodyBackground
+    }
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? '#0e1117' : '#ffffff'
+}
+
+/**
+ * The values behind every --st-* property the recipes read, joined.
+ *
+ * The recipes bake their colors into an AG Grid theme at parse time, and a
+ * Streamlit appearance change rewrites these properties without touching the
+ * `theme` argument the app passed. Comparing this string across renders is
+ * what tells the grid the palette it was built with has gone stale.
+ */
+export function streamlitThemeSignature(el?: Element | ShadowRoot | null): string {
+    const styles = getComputedStyle(resolveThemeHost(el))
+    return STREAMLIT_THEME_VARS
+        .map(name => styles.getPropertyValue(name).trim())
+        .join('|')
 }
 
 function getStreamlitThemeFromCSS(el?: Element | ShadowRoot | null): StreamlitThemeFromCSS {
-    // Walk up to the element that holds --st-* vars
-    const target = el ?? document.documentElement
-    const styles = getComputedStyle(target as Element)
-    const bgColor = styles.getPropertyValue('--st-background-color').trim() || '#ffffff'
-    const isDark = bgColor.startsWith('#') && hexToLuminance(bgColor) < 0.4
+    const styles = getComputedStyle(resolveThemeHost(el))
+    const backgroundColor = resolveBackgroundColor(styles)
+    const isDark = isDarkColor(backgroundColor)
     return {
         primaryColor: styles.getPropertyValue('--st-primary-color').trim() || '#ff4b4b',
-        textColor: styles.getPropertyValue('--st-text-color').trim() || '#262730',
-        backgroundColor: bgColor,
-        secondaryBackgroundColor: styles.getPropertyValue('--st-secondary-background-color').trim() || '#f0f2f6',
+        // The remaining fallbacks follow the resolved appearance. A light
+        // default on a dark background is how the unset case turns into black
+        // text on a near-black grid.
+        textColor: styles.getPropertyValue('--st-text-color').trim() || (isDark ? '#fafafa' : '#262730'),
+        backgroundColor,
+        secondaryBackgroundColor: styles.getPropertyValue('--st-secondary-background-color').trim() || (isDark ? '#262730' : '#f0f2f6'),
         font: styles.getPropertyValue('--st-font').trim() || 'Source Sans, sans-serif',
         base: isDark ? 'dark' : 'light',
     }
