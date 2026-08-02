@@ -1,6 +1,39 @@
 # CHANGELOG
 
 
+## v0.3.1 (2026-08-02)
+
+### Bug Fixes
+
+- Repaint the grid when Streamlit's appearance changes
+  ([`462f893`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/462f893ff3628c6d43004912aeaec64d545792df))
+
+The theme recipes bake Streamlit's --st-* properties into an AG Grid theme object at parse time, and
+  nothing re-read them afterwards. componentDidUpdate re-themed only when componentData.theme
+  changed, which is the theme argument the app passed, not the theme underneath it. Flipping the
+  appearance rewrites every --st-* property while that argument stays byte-identical, so the grid
+  held the palette it was first built with: switch an app to dark and the grid alone stayed light
+  until a full remount.
+
+Compare a signature built from the properties the recipes actually read, and re-theme when either it
+  or the passed theme moves.
+
+Two smaller theme reads were wrong in the same area. Dark detection matched 6-digit hex alone, so a
+  background written as #000 or resolved to an rgb() string silently read as light. And an absent
+  --st-background-color assumed white, which is how a dark page could get a white grid; fall back to
+  what the page renders, then to the color scheme, and let the remaining fallbacks follow the
+  appearance that resolves rather than defaulting to light text colors on a dark grid.
+
+The e2e guard flips the emulated color scheme and touches nothing else, which is the case that
+  broke. It waits for Streamlit's own background to move first, so a failure to repaint the grid
+  cannot pass as Streamlit never having flipped.
+
+### Chores
+
+- Bump demo app requirement to v0.3.0
+  ([`c1b273b`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/c1b273bc8d8f3c9a932f771afba08a126af4a735))
+
+
 ## v0.3.0 (2026-07-25)
 
 ### Bug Fixes
