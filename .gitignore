@@ -25,6 +25,7 @@ scratchpad.md
 # node
 node_modules/
 package-lock.json
+src/st_aggrid/frontend/.test-build/
 
 # Distribution / packaging
 .Python

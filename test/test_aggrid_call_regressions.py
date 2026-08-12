@@ -424,6 +424,19 @@ def test_manual_update_mode_attaches_no_default_events(monkeypatch):
     assert call.component_data["show_toolbar"] is True
 
 
+def test_csv_formula_protection_defaults_safe_and_has_explicit_opt_out(monkeypatch):
+    safe = render_grid(monkeypatch, DF.copy(), key="csv-safe")
+    unsafe = render_grid(
+        monkeypatch,
+        DF.copy(),
+        key="csv-unsafe",
+        allow_unsafe_csv_formulas=True,
+    )
+
+    assert safe.component_data["allow_unsafe_csv_formulas"] is False
+    assert unsafe.component_data["allow_unsafe_csv_formulas"] is True
+
+
 def test_manual_update_mode_honors_explicit_update_on(monkeypatch):
     """An update_on passed by the caller is used verbatim alongside the
     button, so anyone who wants the old triggers can still ask for them."""
