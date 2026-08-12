@@ -28,6 +28,7 @@ export type AgGridDataShape = {
   manual_update: boolean
   pro_assets: any[] | null
   show_download_button: boolean
+  allow_unsafe_csv_formulas: boolean
   show_search: boolean
   show_toolbar: boolean
   custom_jscode_for_grid_return: string | null

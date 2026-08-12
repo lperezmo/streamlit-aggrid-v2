@@ -4,6 +4,7 @@ import { deepMap } from "../utils"
 import { parseJsCodeFromPython } from "./gridUtils"
 import { columnFormaters } from "../customColumns"
 import { ThemeParser } from "../ThemeParser"
+import { protectCsvExportParams } from "./csvExport"
 
 
 export function parseGridOptions(componentData: any, parentElement?: Element | ShadowRoot | null){
@@ -12,6 +13,12 @@ export function parseGridOptions(componentData: any, parentElement?: Element | S
     if (componentData.allow_unsafe_jscode) {
         console.warn("flag allow_unsafe_jscode is on.")
         gridOptions = deepMap(gridOptions, parseJsCodeFromPython, ["rowData"])
+    }
+
+    if (!componentData.allow_unsafe_csv_formulas) {
+        gridOptions.defaultCsvExportParams = protectCsvExportParams(
+            gridOptions.defaultCsvExportParams
+        )
     }
 
     if (!("getRowId" in gridOptions)) {

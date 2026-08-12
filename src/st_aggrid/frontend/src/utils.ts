@@ -14,7 +14,7 @@ function mapObject(obj: Record<string, any>, fn: (val: any) => any, keysToIgnore
 
 function deepMap(obj: any, fn: (val: any) => any, keysToIgnore: string[] = []): any {
     const deepMapper = (val: any) =>
-        val !== null && typeof val === "object" ? deepMap(val, fn) : fn(val)
+        val !== null && typeof val === "object" ? deepMap(val, fn, keysToIgnore) : fn(val)
     if (Array.isArray(obj)) {
         return obj.map(deepMapper)
     }

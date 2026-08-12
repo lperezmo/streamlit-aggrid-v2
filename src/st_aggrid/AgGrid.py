@@ -138,6 +138,7 @@ def AgGrid(
     show_toolbar: bool | None = None,
     show_search: bool = True,
     show_download_button: bool = True,
+    allow_unsafe_csv_formulas: bool = False,
     custom_jscode_for_grid_return: JsCode = None,
     should_grid_return: JsCode = None,
     use_json_serialization: bool | Literal["auto"] = "auto",
@@ -303,6 +304,15 @@ def AgGrid(
     show_download_button : bool, optional
         Show CSV download button in toolbar.
         Defaults to True.
+
+    allow_unsafe_csv_formulas : bool, optional
+        Export formula-looking strings to CSV without neutralizing them. By
+        default, strings beginning with ``=``, ``+``, ``-``, ``@``, tab, or
+        carriage return (including after leading whitespace/control
+        characters) are prefixed with an apostrophe so spreadsheet software
+        treats them as data. Set this to True only when raw spreadsheet
+        formulas are intentional and every exported value is trusted.
+        Defaults to False.
 
     custom_jscode_for_grid_return : JsCode, optional
         JavaScript function for custom data collection when using DataReturnMode.CUSTOM.
@@ -803,6 +813,7 @@ def AgGrid(
         "manual_update": manual_update,
         "pro_assets": pro_assets,
         "show_download_button": show_download_button,
+        "allow_unsafe_csv_formulas": allow_unsafe_csv_formulas,
         "show_search": show_search,
         "show_toolbar": show_toolbar,
         "custom_jscode_for_grid_return": custom_jscode_for_grid_return,
