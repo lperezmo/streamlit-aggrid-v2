@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.3.2 (2026-08-12)
+
+### Bug Fixes
+
+- Harden JavaScript and CSV data boundaries
+  ([`70459e5`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/70459e5609e2fa280a55f5ea8b9eb4c91d066082))
+
+### Chores
+
+- Bump demo app requirement to v0.3.1
+  ([`6d09b82`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/6d09b82c1966fea45fe096158699f7393c881e4d))
+
+
 ## v0.3.1 (2026-08-02)
 
 ### Bug Fixes
