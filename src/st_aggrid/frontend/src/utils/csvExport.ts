@@ -1,5 +1,4 @@
-type ExportProcessCellCallback = (params: any) => any
-type ExportProcessHeaderCallback = (params: any) => any
+type ExportProcessCallback = (params: any) => any
 
 /**
  * Keep untrusted strings inert when a CSV is opened in spreadsheet software.
@@ -24,9 +23,10 @@ export function neutralizeCsvFormula(value: any): any {
   return value
 }
 
-function composeProtectedCellCallback(
-  original: ExportProcessCellCallback | undefined
-): ExportProcessCellCallback {
+/**
+ * Compose formula protection after an application's own export callback.
+ */
+function composedCellCallback(original: ExportProcessCallback | undefined): ExportProcessCallback {
   return (cellParams: any) => {
     const value = original ? original(cellParams) : cellParams.value
     return neutralizeCsvFormula(value)
@@ -34,12 +34,17 @@ function composeProtectedCellCallback(
 }
 
 /**
- * Headers come from user data exactly like cells do (a DataFrame column can be
- * named "=HYPERLINK(...)"), so they get the same treatment.
+ * Header and group-header callbacks get the same treatment, but only when the
+ * application supplied one. When it did not, AG Grid resolves header names
+ * itself from headerName/headerValueGetter/aggregation naming, and its export
+ * params carry just `{ column }` / `{ columnGroup }` - no value field - so
+ * installing our own unconditional callback cannot reproduce that resolution
+ * and would blank every exported header. Applications exporting untrusted
+ * column names should either sanitize them upstream or pass their own
+ * processHeaderCallback / processGroupHeaderCallback, which this composes
+ * neutralization after.
  */
-function composeProtectedHeaderCallback(
-  original: ExportProcessHeaderCallback | undefined
-): ExportProcessHeaderCallback {
+function composedHeaderCallback(original: ExportProcessCallback | undefined): ExportProcessCallback {
   return (headerParams: any) => {
     const value = original ? original(headerParams) : headerParams.value
     const neutralized = neutralizeCsvFormula(value)
@@ -48,59 +53,43 @@ function composeProtectedHeaderCallback(
 }
 
 /**
- * Compose formula protection after an application's own export callbacks,
- * covering cell values, column headers, and column-group headers. Applying it
- * to defaultCsvExportParams covers both the toolbar and AG Grid's context-menu
- * CSV export paths.
+ * Compose formula protection after an application's own export callbacks.
+ *
+ * Cell values are protected unconditionally (AG Grid hands us the raw value);
+ * header, group-header, and row-group callbacks are wrapped only when present,
+ * so AG Grid's built-in header-name resolution stays untouched otherwise.
+ * Applying this to defaultCsvExportParams covers both the toolbar and AG
+ * Grid's context-menu CSV export paths.
+ *
+ * Excel exports are deliberately left alone: xlsx stores strings as inline
+ * string cells that spreadsheet software never evaluates as formulas, so
+ * neutralization there would only corrupt displayed values.
  */
-export function protectExportParams(params: any = {}): any {
-  const originalProcessCellCallback: ExportProcessCellCallback | undefined =
-    typeof params?.processCellCallback === "function"
-      ? params.processCellCallback
-      : undefined
-
-  const originalProcessHeaderCallback: ExportProcessHeaderCallback | undefined =
-    typeof params?.processHeaderCallback === "function"
-      ? params.processHeaderCallback
-      : undefined
-
+export function protectCsvExportParams(params: any = {}): any {
   const protectedParams: any = {
     ...params,
-    processCellCallback: composeProtectedCellCallback(originalProcessCellCallback),
-    processHeaderCallback: composeProtectedHeaderCallback(originalProcessHeaderCallback),
+    processCellCallback: composedCellCallback(
+      typeof params?.processCellCallback === "function"
+        ? params.processCellCallback
+        : undefined
+    ),
   }
 
-  // Group headers can also carry data-derived names (e.g. pandas MultiIndex
-  // columns become column groups), so protect them on the same terms. The
-  // documented AG Grid default is the group's display name.
-  const originalProcessGroupHeaderCallback: ExportProcessHeaderCallback | undefined =
-    typeof params?.processGroupHeaderCallback === "function"
-      ? params.processGroupHeaderCallback
-      : undefined
-
-  protectedParams.processGroupHeaderCallback = (groupParams: any) => {
-    const value = originalProcessGroupHeaderCallback
-      ? originalProcessGroupHeaderCallback(groupParams)
-      : groupParams.displayName
-    const neutralized = neutralizeCsvFormula(value)
-    return typeof neutralized === "string" ? neutralized : String(neutralized ?? "")
+  const wrapIfSupplied = (key: string) => {
+    if (typeof params?.[key] === "function") {
+      protectedParams[key] = composedHeaderCallback(params[key])
+    }
   }
+  wrapIfSupplied("processHeaderCallback")
+  wrapIfSupplied("processGroupHeaderCallback")
+  wrapIfSupplied("processRowGroupCallback")
 
   return protectedParams
 }
 
-export function protectCsvExportParams(params: any = {}): any {
-  return protectExportParams(params)
-}
-
-export function protectExcelExportParams(params: any = {}): any {
-  return protectExportParams(params)
-}
-
 /**
  * Attach the neutralizing callbacks to a gridOptions object unless the app
- * opted out with allow_unsafe_csv_formulas. Covers both export formats: the
- * same formula-injection tricks that work on CSV work on Excel exports.
+ * opted out with allow_unsafe_csv_formulas.
  */
 export function applyExportFormulaProtection(
   gridOptions: any,
@@ -111,8 +100,5 @@ export function applyExportFormulaProtection(
   }
   gridOptions.defaultCsvExportParams = protectCsvExportParams(
     gridOptions.defaultCsvExportParams
-  )
-  gridOptions.defaultExcelExportParams = protectExcelExportParams(
-    gridOptions.defaultExcelExportParams
   )
 }

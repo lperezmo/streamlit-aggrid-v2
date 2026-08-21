@@ -306,14 +306,16 @@ def AgGrid(
         Defaults to True.
 
     allow_unsafe_csv_formulas : bool, optional
-        Export formula-looking strings without neutralizing them, on both the
-        CSV and Excel export paths. By default, strings beginning with ``=``,
-        ``+``, ``-``, ``@``, tab, or carriage return (including after leading
-        whitespace/control characters) are prefixed with an apostrophe so
-        spreadsheet software treats them as data; this covers cell values,
-        column headers, and column-group headers. Set this to True only when
-        raw spreadsheet formulas are intentional and every exported value is
-        trusted.
+        Export formula-looking strings to CSV without neutralizing them. By
+        default, strings beginning with ``=``, ``+``, ``-``, ``@``, tab, or
+        carriage return (including after leading whitespace/control
+        characters) are prefixed with an apostrophe so spreadsheet software
+        treats them as data. Cell values are always covered; when the app
+        supplies its own ``processHeaderCallback``,
+        ``processGroupHeaderCallback``, or ``processRowGroupCallback`` export
+        params, those are composed with the same neutralization. Set this to
+        True only when raw spreadsheet formulas are intentional and every
+        exported value is trusted.
         Defaults to False.
 
     custom_jscode_for_grid_return : JsCode, optional
