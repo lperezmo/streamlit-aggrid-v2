@@ -1,6 +1,59 @@
 # CHANGELOG
 
 
+## v0.3.3 (2026-08-21)
+
+### Bug Fixes
+
+- Bump gitpython to 3.1.59 in uv.lock
+  ([`fa0e817`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/fa0e81755fccc44438a5729df1d49d1f043a568c))
+
+Clears all 9 open Dependabot alerts (6 high, 3 medium). gitpython is a transitive dependency of
+  streamlit; the lockfile pinned 3.1.55, which is vulnerable to GHSA-2jr9... (fixed in 3.1.56),
+  3.1.57, and 3.1.58. No source change needed: streamlit allows the newer version.
+
+- Close export and theme-signature hardening gaps
+  ([`7d2bdbc`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/7d2bdbcd220a3e75750fba013bf2c2c8f764b507))
+
+- Neutralize formula-looking strings in CSV/Excel column headers and column-group headers, not just
+  cell values; protect the Excel export path the same way as CSV under allow_unsafe_csv_formulas -
+  Include the resolved background color in the theme repaint signature so appearance flips are
+  detected even when --st-background-color is absent and the body/prefers-color-scheme fallback is
+  what changes - Extract STREAMLIT_THEME_VARS into its own module and guard it with a test that
+  fails when ThemeParser reads an undeclared --st-* variable - Extend security.test.mjs to cover
+  header/group-header neutralization, Excel protection, and the allow_unsafe_csv_formulas wiring
+
+- Correct export protection after adversarial review
+  ([`577b05f`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/577b05f1e989bc387a331961565ff050fc76acae))
+
+Two reviewers verified the header/group-header callbacks against AG Grid v35 sources and found the
+  unconditional wrappers would have blanked every exported header: AG Grid passes only { column } /
+  { columnGroup } to those callbacks (no value field), and its built-in display-name resolution
+  (headerValueGetter, aggregation naming) cannot be replicated from the callback. Changes:
+
+- Wrap processHeaderCallback, processGroupHeaderCallback, and processRowGroupCallback only when the
+  app supplied one, composing neutralization after it; leave AG Grid's default header resolution
+  untouched otherwise - Drop Excel export neutralization entirely: xlsx stores strings as inlineStr
+  cells that spreadsheet software never evaluates as formulas, so it added visible apostrophe
+  corruption with no security benefit - Fix showcase.py link still pointing at the old repo URL -
+  Widen the theme-var guard regex to any quote style
+
+### Chores
+
+- Bump demo app requirement to v0.3.2
+  ([`8c26d7e`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/8c26d7e3a14e5ccbb33998eb1e468314201f4505))
+
+- Ci wiring and repo hygiene
+  ([`c340e70`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/c340e700f5eb7ef3b60e09b2b9859405173047dc))
+
+- Run npm run test:security as its own CI job; it previously only ran if someone remembered it
+  locally - Bump upload-artifact to v7 in tests.yml to match publish.yml, and add npm caching to
+  publish.yml - Fix the root package.json build script path (frontend lives under
+  src/st_aggrid/frontend) and align repo URLs on lperezmo/streamlit-aggrid-v2 - Commit
+  docs/minimal-collector-selection.html, the design note on how MINIMAL mode derives row selections,
+  instead of leaving it untracked
+
+
 ## v0.3.2 (2026-08-12)
 
 ### Bug Fixes
