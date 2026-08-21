@@ -4,7 +4,7 @@ import { deepMap } from "../utils"
 import { parseJsCodeFromPython } from "./gridUtils"
 import { columnFormaters } from "../customColumns"
 import { ThemeParser } from "../ThemeParser"
-import { protectCsvExportParams } from "./csvExport"
+import { applyExportFormulaProtection } from "./csvExport"
 
 
 export function parseGridOptions(componentData: any, parentElement?: Element | ShadowRoot | null){
@@ -15,11 +15,7 @@ export function parseGridOptions(componentData: any, parentElement?: Element | S
         gridOptions = deepMap(gridOptions, parseJsCodeFromPython, ["rowData"])
     }
 
-    if (!componentData.allow_unsafe_csv_formulas) {
-        gridOptions.defaultCsvExportParams = protectCsvExportParams(
-            gridOptions.defaultCsvExportParams
-        )
-    }
+    applyExportFormulaProtection(gridOptions, componentData.allow_unsafe_csv_formulas)
 
     if (!("getRowId" in gridOptions)) {
         console.warn("getRowId was not set. Auto Rows hashes will be used as row ids.")

@@ -8,7 +8,7 @@
     "build:frontend:production": "cross-env NODE_ENV=production vite build",
     "clean": "rimraf build",
     "dev": "cross-env NODE_ENV=development vite build --watch",
-    "test:security": "rimraf .test-build && tsc --target ES2020 --module ESNext --moduleResolution bundler --strict --skipLibCheck --outDir .test-build src/utils.ts src/utils/csvExport.ts && node --test test/security.test.mjs && rimraf .test-build",
+    "test:security": "rimraf .test-build && tsc --target ES2020 --module ESNext --moduleResolution bundler --strict --skipLibCheck --outDir .test-build src/utils.ts src/utils/csvExport.ts src/streamlitThemeVars.ts && node --test test/security.test.mjs && rimraf .test-build",
     "typecheck": "tsc --noEmit"
   },
   "browserslist": [
