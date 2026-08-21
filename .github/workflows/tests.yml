@@ -134,6 +134,26 @@ jobs:
       - run: uv run --no-sync python -c "import sys; print(sys.version)"
       - run: uv run --no-sync pytest test/ -m "not browser" -v
 
+  # The security suite (test/security.test.mjs) is pure node: no browser, no
+  # Python, no wheel. It guards the JsCode rowData boundary, the CSV/Excel
+  # formula neutralization, and the theme-signature variable list, so it runs
+  # as its own cheap job instead of hiding inside the e2e suite.
+  frontend-security:
+    name: Frontend security tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
+      - run: npm ci
+        working-directory: src/st_aggrid/frontend
+      - run: npm run test:security
+        working-directory: src/st_aggrid/frontend
+
   e2e:
     name: CCv2 e2e (Playwright)
     runs-on: ubuntu-latest
@@ -170,7 +190,7 @@ jobs:
 
       - name: Upload Playwright test artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-results
           path: |

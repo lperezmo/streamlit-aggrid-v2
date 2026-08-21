@@ -20,6 +20,8 @@ import { themeQuartz,
 
 import isEmpty from 'lodash/isEmpty'
 
+import { STREAMLIT_THEME_VARS } from './streamlitThemeVars'
+
 
 // In CCv2, Streamlit injects --st-* CSS custom properties on the component's
 // parentElement (or its shadow host). We must read from that element, not from
@@ -32,17 +34,6 @@ interface StreamlitThemeFromCSS {
     font: string
     base: 'light' | 'dark'
 }
-
-// Every --st-* property the recipes below read. streamlitThemeSignature builds
-// the staleness check out of this list, so a property added to a recipe has to
-// be added here too or a change to it will not repaint the grid.
-const STREAMLIT_THEME_VARS = [
-    '--st-primary-color',
-    '--st-text-color',
-    '--st-background-color',
-    '--st-secondary-background-color',
-    '--st-font',
-] as const
 
 /**
  * The element whose computed style carries the --st-* properties.
@@ -118,17 +109,26 @@ function resolveBackgroundColor(styles: CSSStyleDeclaration): string {
 }
 
 /**
- * The values behind every --st-* property the recipes read, joined.
+ * The values behind every --st-* property the recipes read, plus the resolved
+ * background, joined.
  *
  * The recipes bake their colors into an AG Grid theme at parse time, and a
  * Streamlit appearance change rewrites these properties without touching the
  * `theme` argument the app passed. Comparing this string across renders is
  * what tells the grid the palette it was built with has gone stale.
+ *
+ * The resolved background is part of the signature even when it equals the raw
+ * --st-background-color: when that property is absent, resolveBackgroundColor
+ * falls back to document.body and then to prefers-color-scheme, and an OS
+ * appearance flip changes those while every --st-* value stays empty. Without
+ * this term such a flip would leave the signature constant ("||||" plus a
+ * stale background) and the grid would keep its old palette.
  */
 export function streamlitThemeSignature(el?: Element | ShadowRoot | null): string {
     const styles = getComputedStyle(resolveThemeHost(el))
     return STREAMLIT_THEME_VARS
         .map(name => styles.getPropertyValue(name).trim())
+        .concat(resolveBackgroundColor(styles))
         .join('|')
 }
 

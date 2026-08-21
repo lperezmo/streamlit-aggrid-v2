@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<!--
+  thariq-html-style base shell.
+  Self-contained, single-file HTML document for HUMAN-READABLE planning/report docs.
+  No build, no external assets, no framework. Open by double-clicking; prints cleanly.
+
+  HOW TO USE
+  1. Copy this file to the output path (e.g. docs/plans/<version>/<topic>/<name>.html).
+  2. Set <title>, the .doc-head fields, and the accent if desired.
+  3. Paste the block fragments you need (see blocks/) into <main class="page">.
+     Every block's CSS already lives in the <style> below - fragments just work.
+  4. Fill in real content. Delete unused blocks. Optionally prune their CSS.
+  5. Keep it ONE file. Inline any SVG/JS. Never add an asset dir or CDN link.
+
+  Design language adapted from html-effectiveness (Apache-2.0). See ATTRIBUTION.md.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MINIMAL and the invisible selected row</title>
+    <style>
+      :root {
+        /* palette */
+        --ivory: #faf9f5;
+        --slate: #141413;
+        --clay: #d97757; /* primary accent */
+        --olive: #788c5d; /* success / done */
+        --rust: #bc4b39; /* danger / high */
+        --oat: #e3dacc;
+        --gray-100: #f5f4ee;
+        --gray-150: #f0eee6;
+        --gray-300: #d1cfc5;
+        --gray-500: #87867f;
+        --gray-700: #3d3d3a;
+        --white: #ffffff;
+        --accent: var(--clay);
+
+        /* type */
+        --serif: ui-serif, Georgia, 'Times New Roman', serif;
+        --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        --mono: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+
+        /* shape */
+        --border: 1.5px solid var(--gray-300);
+        --radius-panel: 12px;
+        --radius-row: 8px;
+
+        color-scheme: light;
+      }
+
+      /* ---------- dark theme tokens ---------- */
+      /* Warm near-black ground; the neutral scale inverts, the clay accent is
+         preserved, and olive/rust lift a little so they read on dark surfaces.
+         Driven by the theme toggle (or the OS fallback just below). */
+      :root[data-theme='dark'] {
+        --ivory: #211f1d;
+        --slate: #f3f1ea;
+        --white: #2b2926;
+        --gray-100: #302e2a;
+        --gray-150: #35322d;
+        --gray-300: #46433d;
+        --gray-500: #a3a196;
+        --gray-700: #e2dfd5;
+        --oat: #3a362f;
+        --olive: #9cb67a;
+        --rust: #e56b54;
+
+        color-scheme: dark;
+      }
+      /* No-JS / pre-hydration fallback: honor the OS setting when the reader
+         has expressed no explicit preference. */
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          --ivory: #211f1d;
+          --slate: #f3f1ea;
+          --white: #2b2926;
+          --gray-100: #302e2a;
+          --gray-150: #35322d;
+          --gray-300: #46433d;
+          --gray-500: #a3a196;
+          --gray-700: #e2dfd5;
+          --oat: #3a362f;
+          --olive: #9cb67a;
+          --rust: #e56b54;
+
+          color-scheme: dark;
+        }
+      }
+      /* Severity chips (inline, any block) use fixed light tints; retint for dark. */
+      :root[data-theme='dark'] .sev.med {
+        background: #48332a;
+        color: #f0a684;
+      }
+      :root[data-theme='dark'] .sev.high {
+        background: #4d2a24;
+        color: #f0907a;
+      }
+      /* Code panels (block: code-grid) stay dark even though --slate flips. */
+      :root[data-theme='dark'] .code {
+        background: #16150f;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: var(--sans);
+        background: var(--ivory);
+        color: var(--gray-700);
+        line-height: 1.55;
+        padding: 56px 32px 120px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        max-width: 1120px;
+        margin: 0 auto;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      /* ---------- document header ---------- */
+      .doc-head {
+        margin-bottom: 48px;
+        max-width: 820px;
+      }
+      .doc-head .eyebrow {
+        font-family: var(--mono);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--gray-500);
+        margin-bottom: 12px;
+      }
+      .doc-head h1 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 38px;
+        letter-spacing: -0.01em;
+        color: var(--slate);
+        margin-bottom: 14px;
+      }
+      .doc-head .lede {
+        font-size: 16px;
+        color: var(--gray-700);
+        max-width: 720px;
+      }
+      .doc-head .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        align-items: center;
+        margin-top: 16px;
+        font-size: 13.5px;
+        color: var(--gray-500);
+      }
+      .doc-head .meta .mono {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--gray-700);
+      }
+
+      .pill {
+        font-family: var(--mono);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--gray-500);
+        background: var(--gray-100);
+        border: var(--border);
+        border-radius: 999px;
+        padding: 5px 11px;
+        white-space: nowrap;
+      }
+      .pill.accent {
+        color: var(--white);
+        background: var(--accent);
+        border-color: transparent;
+      }
+      .pill.done {
+        color: var(--white);
+        background: var(--olive);
+        border-color: transparent;
+      }
+
+      /* ---------- sections ---------- */
+      section {
+        margin-bottom: 56px;
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .sec-head h2 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 26px;
+        letter-spacing: -0.01em;
+        color: var(--slate);
+      }
+      .sec-intro {
+        font-size: 14.5px;
+        color: var(--gray-500);
+        max-width: 720px;
+        margin-bottom: 28px;
+      }
+      hr.rule {
+        border: none;
+        border-top: 1px solid var(--gray-300);
+        margin: 0 0 22px;
+      }
+
+      /* ---------- table of contents (block: toc) ---------- */
+      .toc {
+        margin-bottom: 48px;
+        max-width: 480px;
+      }
+      .toc-title {
+        font-family: var(--mono);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--gray-500);
+        margin-bottom: 10px;
+      }
+      .toc-list {
+        list-style: none;
+        counter-reset: toc;
+      }
+      .toc-list li {
+        counter-increment: toc;
+      }
+      .toc-list li a {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 6px 0;
+        font-size: 14.5px;
+        color: var(--gray-700);
+        text-decoration: none;
+        border-bottom: 1px solid var(--gray-150);
+        transition: color 0.15s;
+      }
+      .toc-list li a:hover {
+        color: var(--accent);
+      }
+      .toc-list li a::before {
+        content: counter(toc, decimal-leading-zero);
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-500);
+        flex-shrink: 0;
+      }
+
+      /* ---------- prose typography ---------- */
+      .prose p {
+        font-size: 14.5px;
+        color: var(--gray-700);
+        max-width: 720px;
+        margin-bottom: 14px;
+        line-height: 1.65;
+      }
+      .prose ul,
+      .prose ol {
+        font-size: 14.5px;
+        color: var(--gray-700);
+        max-width: 720px;
+        margin-bottom: 14px;
+        padding-left: 24px;
+        line-height: 1.65;
+      }
+      .prose li + li {
+        margin-top: 4px;
+      }
+      .prose code {
+        font-family: var(--mono);
+        font-size: 13px;
+        background: var(--gray-150);
+        border: 1px solid var(--gray-300);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+      .prose blockquote {
+        border-left: 3px solid var(--accent);
+        padding: 8px 16px;
+        margin: 14px 0;
+        color: var(--gray-500);
+        font-size: 14.5px;
+        max-width: 720px;
+      }
+      .prose strong {
+        color: var(--slate);
+      }
+
+      /* ---------- summary cards (block: summary-cards) ---------- */
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 900px) {
+        .summary {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .summary .cell {
+        background: var(--white);
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        padding: 18px 20px;
+      }
+      .summary .k {
+        font-family: var(--mono);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--gray-500);
+        margin-bottom: 6px;
+      }
+      .summary .v {
+        font-size: 17px;
+        color: var(--slate);
+        font-weight: 600;
+      }
+      .summary .v.accent {
+        color: var(--accent);
+      }
+
+      /* ---------- callout (block: callout) ---------- */
+      .callout {
+        border: var(--border);
+        border-left: 4px solid var(--gray-500);
+        border-radius: var(--radius-row);
+        background: var(--white);
+        padding: 14px 18px;
+        margin: 18px 0;
+        font-size: 14px;
+      }
+      .callout .tag {
+        font-family: var(--mono);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: block;
+        margin-bottom: 4px;
+        color: var(--gray-500);
+      }
+      .callout.note {
+        border-left-color: var(--accent);
+      }
+      .callout.warn {
+        border-left-color: var(--rust);
+      }
+      .callout.success {
+        border-left-color: var(--olive);
+      }
+      .callout.decision {
+        border-left-color: var(--slate);
+      }
+
+      /* ---------- milestone / phase timeline (block: timeline) ---------- */
+      .milestones {
+        display: flex;
+        flex-direction: column;
+      }
+      .milestone {
+        display: grid;
+        grid-template-columns: 130px 28px 1fr;
+        gap: 0 18px;
+      }
+      .milestone .when {
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-500);
+        padding-top: 4px;
+      }
+      .milestone .dot-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .milestone .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--white);
+        border: 3px solid var(--accent);
+        margin-top: 4px;
+        flex-shrink: 0;
+      }
+      .milestone .dot.done {
+        background: var(--olive);
+        border-color: var(--olive);
+      }
+      .milestone .line {
+        width: 2px;
+        flex: 1;
+        background: var(--gray-300);
+        margin: 4px 0;
+      }
+      .milestone:last-child .line {
+        display: none;
+      }
+      .milestone .body {
+        padding-bottom: 36px;
+      }
+      .milestone .body h3 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 19px;
+        color: var(--slate);
+        margin-bottom: 4px;
+      }
+      .milestone .body p {
+        font-size: 14px;
+        color: var(--gray-500);
+        margin-bottom: 10px;
+        max-width: 620px;
+      }
+      .milestone .tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .milestone .tag {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        background: var(--gray-150);
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        padding: 3px 8px;
+        color: var(--gray-700);
+      }
+
+      /* ---------- event timeline (block: event-timeline) ---------- */
+      .timeline {
+        position: relative;
+        padding-left: 28px;
+      }
+      .timeline::before {
+        content: '';
+        position: absolute;
+        left: 7px;
+        top: 6px;
+        bottom: 6px;
+        width: 2px;
+        background: var(--gray-300);
+      }
+      .tl-entry {
+        position: relative;
+        padding-bottom: 24px;
+      }
+      .tl-entry:last-child {
+        padding-bottom: 0;
+      }
+      .tl-dot {
+        position: absolute;
+        left: -28px;
+        top: 4px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--gray-500);
+        border: 3px solid var(--ivory);
+      }
+      .tl-dot.impact {
+        background: var(--clay);
+      }
+      .tl-dot.mitigated {
+        background: var(--olive);
+      }
+      .tl-time {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-500);
+      }
+      .tl-body {
+        font-size: 14px;
+      }
+      .tl-body strong {
+        color: var(--slate);
+      }
+
+      /* ---------- side-by-side code / approaches (block: code-grid) ---------- */
+      .code-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+      @media (max-width: 980px) {
+        .code-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .code-block {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .code-block .file-label {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-500);
+      }
+      .code {
+        background: var(--slate);
+        border-radius: var(--radius-panel);
+        padding: 18px 20px;
+        overflow-x: auto;
+        flex: 1;
+      }
+      .code pre {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.65;
+        color: #e8e6de;
+        white-space: pre;
+      }
+      .code .kw {
+        color: var(--clay);
+      }
+      .code .str {
+        color: var(--olive);
+      }
+      .code .cm {
+        color: var(--gray-500);
+      }
+      .code .fn {
+        color: #c9b98a;
+      }
+
+      /* ---------- inline severity chips (usable in any block) ---------- */
+      .sev {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+      }
+      .sev.low {
+        background: var(--gray-150);
+        color: var(--olive);
+      }
+      .sev.med {
+        background: #f6e7de;
+        color: var(--clay);
+      }
+      .sev.high {
+        background: #f3dad3;
+        color: var(--rust);
+      }
+
+      /* ---------- annotated flowchart (block: flowchart) ---------- */
+      .flowchart-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 28px;
+        align-items: start;
+      }
+      @media (max-width: 920px) {
+        .flowchart-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .flow-canvas {
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        background: var(--white);
+        padding: 28px;
+        overflow-x: auto;
+      }
+      svg.flow {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .flow text {
+        font-family: var(--mono);
+        font-size: 12px;
+        fill: var(--slate);
+        pointer-events: none;
+      }
+      .flow .sub,
+      .flow .lbl {
+        font-size: 10px;
+        fill: var(--gray-500);
+      }
+      .flow .node rect {
+        fill: var(--white);
+        stroke: var(--gray-300);
+        stroke-width: 1.5;
+        rx: 8;
+      }
+      .flow .node.term rect {
+        fill: var(--gray-150);
+        rx: 22;
+      }
+      .flow .node.gate path {
+        fill: var(--white);
+        stroke: var(--gray-300);
+        stroke-width: 1.5;
+      }
+      .flow .node.ok rect {
+        fill: rgba(120, 140, 93, 0.14);
+        stroke: var(--olive);
+      }
+      .flow .node.bad rect {
+        fill: rgba(188, 75, 57, 0.12);
+        stroke: var(--rust);
+      }
+      .flow.interactive .node {
+        cursor: pointer;
+      }
+      .flow .node.active rect,
+      .flow .node.active path {
+        stroke: var(--accent);
+        stroke-width: 2;
+      }
+      .flow .edge {
+        stroke: var(--gray-500);
+        stroke-width: 1.5;
+        fill: none;
+      }
+      .flow .edge.no {
+        stroke: var(--rust);
+        stroke-dasharray: 4 4;
+      }
+      .flow .edge.yes {
+        stroke: var(--olive);
+      }
+      .flow-panel {
+        position: sticky;
+        top: 24px;
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        background: var(--white);
+        padding: 20px 20px 22px;
+      }
+      @media (max-width: 920px) {
+        .flow-panel {
+          position: static;
+        }
+      }
+      .flow-panel .hint {
+        font-size: 12px;
+        color: var(--gray-500);
+        margin-bottom: 14px;
+      }
+      .flow-panel h3 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 19px;
+        margin-bottom: 6px;
+        color: var(--slate);
+      }
+      .flow-panel .meta {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--gray-500);
+        margin-bottom: 14px;
+      }
+      .flow-panel p {
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--gray-700);
+        margin-bottom: 12px;
+      }
+      .flow-panel pre {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        line-height: 1.55;
+        background: var(--gray-150);
+        border: 1px solid var(--gray-300);
+        border-radius: 8px;
+        padding: 10px 12px;
+        white-space: pre-wrap;
+        color: var(--slate);
+      }
+      .flow-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        margin-top: 16px;
+        font-size: 12px;
+        color: var(--gray-700);
+      }
+      .flow-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .flow-legend .chip {
+        width: 22px;
+        height: 14px;
+        border: 1.5px solid var(--gray-300);
+        border-radius: 4px;
+        background: var(--white);
+      }
+      .flow-legend .chip.gate {
+        transform: rotate(45deg);
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+      }
+      .flow-legend .chip.ok {
+        background: rgba(120, 140, 93, 0.14);
+        border-color: var(--olive);
+      }
+      .flow-legend .chip.bad {
+        background: rgba(188, 75, 57, 0.12);
+        border-color: var(--rust);
+      }
+
+      /* ---------- before/after flow cards (block: flow-pair) ---------- */
+      .flow-pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 680px) {
+        .flow-pair {
+          grid-template-columns: 1fr;
+        }
+      }
+      .flowcard {
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        padding: 16px 16px 18px;
+        background: var(--ivory);
+      }
+      .flowcard.after {
+        border-color: var(--accent);
+      }
+      .flowcard .fc-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 12px;
+        color: var(--gray-500);
+      }
+      .flowcard.after .fc-label {
+        color: var(--accent);
+      }
+      .fnode {
+        border: var(--border);
+        background: var(--white);
+        border-radius: var(--radius-row);
+        padding: 7px 12px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-700);
+        text-align: center;
+      }
+      .fnode.new {
+        border-color: var(--accent);
+        background: rgba(217, 119, 87, 0.1);
+        color: var(--rust);
+      }
+      .fnode.store {
+        background: var(--oat);
+      }
+      .farrow {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 22px;
+        color: var(--gray-500);
+        font-size: 13px;
+        line-height: 1;
+      }
+      .farrow.lab {
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+      }
+      .fsplit {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .fsplit .farrow {
+        height: 20px;
+      }
+
+      /* ---------- numbered feature cards (block: feature-cards) ---------- */
+      .feature {
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        margin-bottom: 14px;
+        overflow: hidden;
+        background: var(--white);
+      }
+      .feature-head {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        padding: 14px 18px;
+        background: var(--gray-150);
+      }
+      .feature-num {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--accent);
+        font-weight: 600;
+        flex: none;
+      }
+      .feature-head h4 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 16.5px;
+        letter-spacing: -0.01em;
+        color: var(--slate);
+      }
+      .feature-body {
+        padding: 14px 18px 16px;
+      }
+      .feature-row {
+        display: grid;
+        grid-template-columns: 64px 1fr;
+        gap: 10px;
+        margin-bottom: 9px;
+        font-size: 14px;
+      }
+      .feature-row:last-child {
+        margin-bottom: 0;
+      }
+      .feature-row .k {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--gray-500);
+        padding-top: 3px;
+      }
+      .feature-row .v {
+        color: var(--gray-700);
+      }
+      .fchip {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        background: var(--gray-100);
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        padding: 1.5px 7px;
+        color: var(--gray-700);
+        white-space: nowrap;
+        margin: 1px 2px 1px 0;
+      }
+
+      /* ---------- labeled edge panel (block: labeled-panel) ---------- */
+      .lpanel {
+        border: var(--border);
+        border-left: 4px solid var(--gray-500);
+        border-radius: var(--radius-panel);
+        background: var(--white);
+        padding: 20px 24px;
+        margin: 18px 0;
+      }
+      .lpanel .lab {
+        font-family: var(--mono);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--gray-500);
+        margin-bottom: 14px;
+      }
+      .lpanel.warn {
+        border-left-color: var(--rust);
+      }
+      .lpanel.warn .lab {
+        color: var(--rust);
+      }
+      .lpanel.success {
+        border-left-color: var(--olive);
+      }
+      .lpanel.success .lab {
+        color: var(--olive);
+      }
+      .lpanel.note {
+        border-left-color: var(--accent);
+      }
+      .lpanel.note .lab {
+        color: var(--accent);
+      }
+      .lpanel ul {
+        list-style: none;
+      }
+      .lpanel li {
+        position: relative;
+        padding-left: 20px;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: var(--gray-700);
+        max-width: 68ch;
+      }
+      .lpanel li:last-child {
+        margin-bottom: 0;
+      }
+      .lpanel li::before {
+        content: '\2013';
+        position: absolute;
+        left: 0;
+        color: var(--gray-500);
+        font-weight: 700;
+      }
+      .lpanel.warn li::before {
+        color: var(--rust);
+      }
+      .lpanel.success li::before {
+        color: var(--olive);
+      }
+      .lpanel.note li::before {
+        color: var(--accent);
+      }
+      .lpanel li strong {
+        color: var(--slate);
+      }
+      .lpanel p {
+        font-size: 14px;
+        color: var(--gray-700);
+        max-width: 68ch;
+      }
+      .person {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 12px;
+        padding: 12px 0;
+        align-items: start;
+      }
+      .person + .person {
+        border-top: 1px dashed var(--gray-300);
+      }
+      .person .avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--gray-150);
+        border: var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-700);
+      }
+      .person .name {
+        font-weight: 600;
+        color: var(--slate);
+        font-size: 14.5px;
+      }
+      .person .role {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-500);
+        margin-bottom: 4px;
+      }
+      .person .ask {
+        font-size: 14px;
+        color: var(--gray-700);
+      }
+
+      /* ---------- tabbed code panel (block: code-tabs) ---------- */
+      .code-tabs {
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        background: var(--white);
+        overflow: hidden;
+        position: relative;
+      }
+      .code-tabs > input[type='radio'] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .code-tabs .tab-bar {
+        display: flex;
+        flex-wrap: wrap;
+        background: var(--gray-150);
+        border-bottom: var(--border);
+      }
+      .code-tabs label {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--gray-500);
+        padding: 10px 18px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1.5px;
+      }
+      .code-tabs label:hover {
+        color: var(--slate);
+      }
+      .code-tabs .tab-pane {
+        display: none;
+        padding: 16px 20px;
+        overflow-x: auto;
+      }
+      .code-tabs .tab-pane pre {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.65;
+        color: var(--gray-700);
+        white-space: pre;
+      }
+      .code-tabs > input:nth-of-type(1):checked ~ .tab-bar label:nth-of-type(1),
+      .code-tabs > input:nth-of-type(2):checked ~ .tab-bar label:nth-of-type(2),
+      .code-tabs > input:nth-of-type(3):checked ~ .tab-bar label:nth-of-type(3),
+      .code-tabs > input:nth-of-type(4):checked ~ .tab-bar label:nth-of-type(4) {
+        color: var(--slate);
+        background: var(--white);
+        border-bottom-color: var(--accent);
+      }
+      .code-tabs > input:nth-of-type(1):checked ~ .tab-pane.p1,
+      .code-tabs > input:nth-of-type(2):checked ~ .tab-pane.p2,
+      .code-tabs > input:nth-of-type(3):checked ~ .tab-pane.p3,
+      .code-tabs > input:nth-of-type(4):checked ~ .tab-pane.p4 {
+        display: block;
+      }
+
+      /* ---------- collapsible explainer (block: collapsible) ---------- */
+      details {
+        border: var(--border);
+        border-radius: var(--radius-row);
+        background: var(--white);
+        margin-bottom: 10px;
+      }
+      summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        font-weight: 600;
+        color: var(--slate);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary::before {
+        content: '›';
+        font-family: var(--mono);
+        color: var(--accent);
+        transition: transform 0.15s;
+        display: inline-block;
+      }
+      details[open] summary::before {
+        transform: rotate(90deg);
+      }
+      summary .where {
+        font-family: var(--mono);
+        font-weight: 400;
+        font-size: 12px;
+        color: var(--gray-500);
+        margin-left: auto;
+      }
+      details .body {
+        padding: 0 16px 16px;
+      }
+      details .body p {
+        font-size: 14px;
+      }
+
+      /* ---------- diagram panel (block: diagram) ---------- */
+      .diagram {
+        background: var(--white);
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        padding: 28px;
+        overflow-x: auto;
+      }
+      .diagram svg {
+        display: block;
+      }
+      .diagram text {
+        font-family: var(--mono);
+      }
+      .caption {
+        font-size: 13px;
+        color: var(--gray-500);
+        margin-top: 12px;
+      }
+
+      /* ---------- token swatches (block: swatches) ---------- */
+      .swatch-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 18px;
+      }
+      .swatch .chip {
+        width: 100%;
+        height: 56px;
+        border-radius: var(--radius-row);
+        border: var(--border);
+        margin-bottom: 8px;
+      }
+      .swatch .hex {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-700);
+        display: block;
+      }
+      .swatch .token {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--gray-500);
+        display: block;
+      }
+
+      /* ---------- sources footer (block: sources) ---------- */
+      .sources {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-500);
+        border-top: 1px solid var(--gray-300);
+        padding-top: 16px;
+        margin-top: 8px;
+      }
+
+      /* ---------- smooth theme change ---------- */
+      /* Theme is set before first paint, so these transitions only fire on a
+         deliberate toggle, never on load. */
+      body,
+      .summary .cell,
+      .callout,
+      details,
+      .diagram,
+      .diagram rect,
+      .diagram text,
+      .diagram line,
+      .diagram path,
+      .flow-canvas,
+      .flow rect,
+      .flow text,
+      .flow path,
+      .flow-panel,
+      .flowcard,
+      .fnode,
+      .feature,
+      .feature-head,
+      .lpanel,
+      .code-tabs,
+      .fchip,
+      .pill,
+      .milestone .tag,
+      .milestone .dot,
+      .code,
+      .theme-toggle,
+      .theme-toggle button,
+      h1,
+      h2,
+      h3,
+      .prose p,
+      .lede,
+      .sec-intro,
+      .caption,
+      .toc-list li a {
+        transition: background-color 0.28s ease, border-color 0.28s ease,
+          color 0.22s ease, fill 0.28s ease, stroke 0.28s ease;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+
+      /* ---------- theme toggle (light / dark / system) ---------- */
+      .theme-toggle {
+        position: fixed;
+        top: 18px;
+        right: 20px;
+        z-index: 50;
+        display: inline-flex;
+        gap: 2px;
+        padding: 3px;
+        background: var(--white);
+        border: var(--border);
+        border-radius: 999px;
+        box-shadow: 0 2px 8px rgba(20, 20, 19, 0.09);
+      }
+      .theme-toggle button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        border-radius: 999px;
+        color: var(--gray-500);
+        cursor: pointer;
+      }
+      .theme-toggle button:hover {
+        color: var(--slate);
+        background: var(--gray-100);
+      }
+      .theme-toggle button[aria-pressed='true'],
+      .theme-toggle button[aria-pressed='true']:hover {
+        background: var(--accent);
+        color: var(--white);
+      }
+      .theme-toggle button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .theme-toggle svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+      @media (max-width: 640px) {
+        .theme-toggle {
+          top: 12px;
+          right: 12px;
+        }
+      }
+
+      /* ---------- print ---------- */
+      @media print {
+        .theme-toggle {
+          display: none;
+        }
+        body {
+          background: var(--white);
+          padding: 0;
+        }
+        section {
+          break-inside: avoid;
+        }
+        details {
+          break-inside: avoid;
+        }
+        details:not([open]) {
+        } /* leave authored open/closed state */
+      }
+
+      /* ---------- decision picker ---------- */
+      /* Colored only through the shared tokens, so it follows the theme toggle
+         without needing its own dark override. */
+      .pick {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: var(--white);
+        border: var(--border);
+        border-radius: var(--radius-panel);
+        padding: 20px;
+      }
+      .pick-opt {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: start;
+        background: var(--gray-100);
+        border: 1.5px solid transparent;
+        border-radius: var(--radius-row);
+        padding: 12px 14px;
+        cursor: pointer;
+      }
+      .pick-opt:hover {
+        border-color: var(--gray-300);
+      }
+      .pick-opt:has(input:checked) {
+        border-color: var(--accent);
+        background: var(--white);
+      }
+      .pick-opt:has(input:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .pick-opt input {
+        margin: 3px 0 0;
+        accent-color: var(--accent);
+        width: 16px;
+        height: 16px;
+      }
+      .pick-h {
+        display: block;
+        font-weight: 600;
+        font-size: 0.94rem;
+        color: var(--slate);
+        margin-bottom: 2px;
+      }
+      .pick-h em {
+        color: var(--accent);
+        font-style: normal;
+        font-weight: 500;
+      }
+      .pick-d {
+        display: block;
+        font-size: 0.86rem;
+        line-height: 1.5;
+        color: var(--gray-500);
+      }
+      .pick-lab {
+        display: block;
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--gray-500);
+        margin-top: 8px;
+      }
+      .pick-note {
+        width: 100%;
+        box-sizing: border-box;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        line-height: 1.6;
+        color: var(--slate);
+        background: var(--gray-100);
+        border: var(--border);
+        border-radius: var(--radius-row);
+        padding: 10px 12px;
+        resize: vertical;
+      }
+      .pick-note:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .pick-status {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        color: var(--gray-500);
+        border-left: 3px solid var(--gray-300);
+        padding: 6px 10px;
+        margin-top: 6px;
+      }
+      .pick-status.ready {
+        color: var(--olive);
+        border-left-color: var(--olive);
+      }
+      .pick-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 4px;
+      }
+      .pick-btn {
+        font-family: var(--sans);
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--white);
+        background: var(--slate);
+        border: 1.5px solid var(--slate);
+        border-radius: var(--radius-row);
+        padding: 9px 16px;
+        cursor: pointer;
+      }
+      .pick-btn:hover {
+        opacity: 0.86;
+      }
+      .pick-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .pick-btn.ghost {
+        color: var(--gray-700);
+        background: transparent;
+        border-color: var(--gray-300);
+        font-weight: 500;
+      }
+      .pick-copied {
+        font-family: var(--mono);
+        font-size: 0.76rem;
+        color: var(--olive);
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .pick-copied.on {
+        opacity: 1;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pick-copied {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Theme control: light / dark / system. Preference persists in
+         localStorage; "system" tracks the OS setting live. The effective theme
+         is written to <html data-theme> before first paint to avoid a flash. -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var KEY = 'thariq-doc-theme';
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function getPref() {
+          try {
+            return localStorage.getItem(KEY) || 'system';
+          } catch (e) {
+            return 'system';
+          }
+        }
+        function resolve(pref) {
+          if (pref === 'system') return mq.matches ? 'dark' : 'light';
+          return pref;
+        }
+        function apply() {
+          var pref = getPref();
+          root.setAttribute('data-theme', resolve(pref));
+          var btns = document.querySelectorAll('.theme-toggle button');
+          for (var i = 0; i < btns.length; i++) {
+            var on = btns[i].getAttribute('data-set-theme') === pref;
+            btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+          }
+        }
+
+        // Set the effective theme immediately (before the body renders).
+        root.setAttribute('data-theme', resolve(getPref()));
+
+        function wire() {
+          var btns = document.querySelectorAll('.theme-toggle button');
+          for (var i = 0; i < btns.length; i++) {
+            btns[i].addEventListener('click', function () {
+              try {
+                localStorage.setItem(KEY, this.getAttribute('data-set-theme'));
+              } catch (e) {}
+              apply();
+            });
+          }
+          apply();
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', wire);
+        } else {
+          wire();
+        }
+        // Follow the OS while in "system" mode.
+        mq.addEventListener('change', function () {
+          if (getPref() === 'system') apply();
+        });
+      })();
+    </script>
+
+    <div class="theme-toggle" role="group" aria-label="Color theme">
+      <button type="button" data-set-theme="light" title="Light" aria-label="Light theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </svg>
+      </button>
+      <button type="button" data-set-theme="dark" title="Dark" aria-label="Dark theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+      <button type="button" data-set-theme="system" title="System" aria-label="Match system theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <path d="M8 21h8M12 17v4" />
+        </svg>
+      </button>
+    </div>
+
+    <main class="page">
+      <header class="doc-head">
+        <div class="eyebrow">Decision needed · streamlit-aggrid-v2</div>
+        <h1>MINIMAL and the invisible selected row</h1>
+        <p class="lede">
+          Filter a grid so that a selected row is hidden, then read
+          <code>selected_rows</code>. Every other data return mode still hands you that row.
+          <code>DataReturnMode.MINIMAL</code> does not. Nothing documents the difference, and
+          the version about to ship is the one that introduces it.
+        </p>
+        <div class="meta">
+          <span class="pill">one decision</span>
+          <span class="mono">PR #11 · v0.3.0</span>
+          <span>2026-07-25</span>
+        </div>
+      </header>
+
+      <nav class="toc">
+        <div class="toc-title">Contents</div>
+        <ol class="toc-list">
+          <li><a href="#where-selections-come-from">Where each collector gets its selections</a></li>
+          <li><a href="#the-scenario">The scenario, concretely</a></li>
+          <li><a href="#options">Four ways to settle it</a></li>
+          <li><a href="#the-code">What the change looks like</a></li>
+          <li><a href="#the-wrinkle">One wrinkle worth knowing first</a></li>
+          <li><a href="#already-done">The other item, already done</a></li>
+          <li><a href="#your-call">Your call</a></li>
+        </ol>
+      </nav>
+
+      <section>
+        <div class="summary">
+          <div class="cell">
+            <div class="k">Affects</div>
+            <div class="v">MINIMAL only</div>
+          </div>
+          <div class="cell">
+            <div class="k">Introduced</div>
+            <div class="v accent">Unreleased</div>
+          </div>
+          <div class="cell">
+            <div class="k">Cost to match legacy</div>
+            <div class="v">~4 lines</div>
+          </div>
+          <div class="cell">
+            <div class="k">My recommendation</div>
+            <div class="v accent">Option A</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="where-selections-come-from">
+        <div class="sec-head"><h2>Where each collector gets its selections</h2></div>
+        <p class="sec-intro">
+          Both collectors walk the grid once. They just walk different sets of rows, and that
+          single choice is the whole difference.
+        </p>
+        <div class="flow-pair">
+          <div class="flowcard before">
+            <div class="fc-label">LegacyCollector · every other mode</div>
+            <div class="fnode">api.forEachNode()</div>
+            <div class="farrow lab"><span>&darr;</span><span>every row, filtered or not</span></div>
+            <div class="fnode">one node each, carrying isSelected</div>
+            <div class="farrow lab"><span>&darr;</span><span>whole node list on the wire</span></div>
+            <div class="fnode">Python filters on isSelected</div>
+            <div class="farrow">&darr;</div>
+            <div class="fnode store">selected_rows: includes hidden rows</div>
+          </div>
+          <div class="flowcard after">
+            <div class="fc-label">MinimalCollector · MINIMAL</div>
+            <div class="fnode">api.forEachNodeAfterFilterAndSort()</div>
+            <div class="farrow lab"><span>&darr;</span><span>displayed rows only</span></div>
+            <div class="fnode new">push to data, and to selectedRows if selected</div>
+            <div class="farrow lab"><span>&darr;</span><span>rows and selection only</span></div>
+            <div class="fnode">Python reads selectedRows verbatim</div>
+            <div class="farrow">&darr;</div>
+            <div class="fnode store">selected_rows: hidden rows missing</div>
+          </div>
+        </div>
+        <div class="prose">
+          <p>
+            The narrow walk is not an oversight. It is what makes MINIMAL minimal: one pass, no
+            node metadata, no grid state, no column state. Measured at 54.6% smaller than the
+            legacy payload on a 200-row grid, and the gap widens with column count. The selection
+            behavior came along for the ride.
+          </p>
+        </div>
+      </section>
+
+      <section id="the-scenario">
+        <div class="sec-head"><h2>The scenario, concretely</h2></div>
+        <div class="prose">
+          <p>
+            AG Grid does not deselect a row when a filter hides it. Selection and filtering are
+            independent, which is what makes this reachable rather than theoretical:
+          </p>
+          <ol>
+            <li>User ticks three rows.</li>
+            <li>User types in the quick filter until one of the three is no longer displayed.</li>
+            <li>The script reads <code>response.selected_rows</code>.</li>
+          </ol>
+          <p>
+            On <code>FILTERED_AND_SORTED</code>, <code>AS_INPUT</code>, <code>FILTERED</code> or
+            <code>CUSTOM</code>, that returns three rows. On <code>MINIMAL</code> it returns two,
+            with nothing to indicate the third was dropped rather than deselected.
+          </p>
+        </div>
+        <div class="callout warn">
+          <span class="tag">Why it matters</span>
+          A "select rows, then act on them" flow silently operates on fewer rows than the user
+          ticked. Delete, export and bulk-edit buttons are exactly this shape, and the failure is
+          invisible: no error, no warning, just a shorter list.
+        </div>
+      </section>
+
+      <section id="options">
+        <div class="sec-head"><h2>Four ways to settle it</h2></div>
+        <p class="sec-intro">
+          The cheap-versus-correct tension I expected here turned out not to exist. See option A.
+        </p>
+
+        <div class="feature">
+          <div class="feature-head"><span class="feature-num">A</span><h4>Match legacy, via getSelectedNodes()</h4></div>
+          <div class="feature-body">
+            <div class="feature-row"><span class="k">Does</span><span class="v">Collect selections from <span class="fchip">api.getSelectedNodes()</span> instead of inferring them during the display walk, so hidden selected rows come back exactly as in every other mode.</span></div>
+            <div class="feature-row"><span class="k">Cost</span><span class="v">I assumed this meant a second full pass over every row, which would have undercut the point of MINIMAL. It does not: <span class="fchip">getSelectedNodes()</span> is on the AG Grid 35.3 API and returns the selection directly, so the work is proportional to rows selected, not rows present. Payload grows only by the hidden selected rows.</span></div>
+            <div class="feature-row"><span class="k">Verdict</span><span class="v"><span class="sev low">Low risk</span> Recommended. Same semantics everywhere, nothing to document as an exception, and the cost I was worried about is not real.</span></div>
+          </div>
+        </div>
+
+        <div class="feature">
+          <div class="feature-head"><span class="feature-num">B</span><h4>Keep visible-only, document it as intended</h4></div>
+          <div class="feature-body">
+            <div class="feature-row"><span class="k">Does</span><span class="v">Nothing to the code. States in the docstring that MINIMAL reports the selection among displayed rows.</span></div>
+            <div class="feature-row"><span class="k">Cost</span><span class="v">Zero work, and the semantic is defensible on its own terms: "what the user can currently see selected" is a coherent thing to mean.</span></div>
+            <div class="feature-row"><span class="k">Verdict</span><span class="v"><span class="sev med">Medium risk</span> The same attribute on the same object means two different things depending on a mode set elsewhere in the call. Documented or not, that is the kind of difference people discover in production.</span></div>
+          </div>
+        </div>
+
+        <div class="feature">
+          <div class="feature-head"><span class="feature-num">C</span><h4>Return both sets</h4></div>
+          <div class="feature-body">
+            <div class="feature-row"><span class="k">Does</span><span class="v">Keeps <span class="fchip">selected_rows</span> matching legacy and adds something like <span class="fchip">selected_rows_visible</span>.</span></div>
+            <div class="feature-row"><span class="k">Cost</span><span class="v">New public surface, and duplicate row payloads for anything both selected and displayed, which is most of it. That works against the one thing MINIMAL exists to do.</span></div>
+            <div class="feature-row"><span class="k">Verdict</span><span class="v"><span class="sev med">Medium risk</span> Solves a problem nobody reported, at the cost of the mode's whole reason for existing.</span></div>
+          </div>
+        </div>
+
+        <div class="feature">
+          <div class="feature-head"><span class="feature-num">D</span><h4>Make it a parameter</h4></div>
+          <div class="feature-body">
+            <div class="feature-row"><span class="k">Does</span><span class="v">Adds a flag so the caller picks which selection semantic they want.</span></div>
+            <div class="feature-row"><span class="k">Cost</span><span class="v">Most flexible, most surface. Every reader of the signature now has to understand a distinction they did not ask about, and both paths need tests forever.</span></div>
+            <div class="feature-row"><span class="k">Verdict</span><span class="v"><span class="sev high">High cost</span> A parameter is what you reach for when the right default is genuinely unknowable. Here it is knowable: legacy has behaved one way for years.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="the-code">
+        <div class="sec-head"><h2>What the change looks like</h2></div>
+        <p class="sec-intro">Option A against what is on the branch today.</p>
+        <div class="code-grid">
+          <div class="code-block">
+            <div class="file-label">Now &middot; MinimalCollector.ts</div>
+            <div class="code">
+<pre><span class="cm">// one pass, display order</span>
+api.<span class="fn">forEachNodeAfterFilterAndSort</span>((node) =&gt; {
+  <span class="kw">if</span> (node.group) <span class="kw">return</span>
+
+  <span class="kw">const</span> row = <span class="kw">this</span>.<span class="fn">stripInternalFields</span>(node.data)
+  data.<span class="fn">push</span>(row)
+
+  <span class="cm">// only rows this walk visited, so a</span>
+  <span class="cm">// filtered-out selection never arrives</span>
+  <span class="kw">if</span> (node.<span class="fn">isSelected</span>()) {
+    selectedRows.<span class="fn">push</span>(row)
+  }
+})</pre>
+            </div>
+            <p class="sec-intro">Selection is a by-product of the display walk.</p>
+          </div>
+
+          <div class="code-block">
+            <div class="file-label">Option A &middot; MinimalCollector.ts</div>
+            <div class="code">
+<pre><span class="cm">// one pass, display order</span>
+api.<span class="fn">forEachNodeAfterFilterAndSort</span>((node) =&gt; {
+  <span class="kw">if</span> (node.group) <span class="kw">return</span>
+  data.<span class="fn">push</span>(<span class="kw">this</span>.<span class="fn">stripInternalFields</span>(node.data))
+})
+
+<span class="cm">// asked for directly: proportional to the</span>
+<span class="cm">// selection, not to the number of rows</span>
+<span class="kw">const</span> selectedRows = api
+  .<span class="fn">getSelectedNodes</span>()
+  .<span class="fn">filter</span>((node) =&gt; !node.group)
+  .<span class="fn">map</span>((node) =&gt; <span class="kw">this</span>.<span class="fn">stripInternalFields</span>(node.data))</pre>
+            </div>
+            <p class="sec-intro">Selection is asked for on its own terms.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="the-wrinkle">
+        <div class="sec-head"><h2>One wrinkle worth knowing first</h2></div>
+        <div class="lpanel warn">
+          <div class="lab">Read this before choosing A</div>
+          <ul>
+            <li><strong>Option A lets a row appear in <code>selected_rows</code> but not in <code>data</code>.</strong> MINIMAL's <code>data</code> is the displayed rows, so a hidden selected row is in one and not the other. That looks inconsistent written down.</li>
+            <li><strong>It is what legacy already does.</strong> Under <code>FILTERED_AND_SORTED</code>, <code>data</code> is filtered while selections are collected from every node, so the same row can be selected and absent from <code>data</code> today. Option A makes MINIMAL match a wrinkle that already exists rather than inventing one.</li>
+            <li><strong>Group rows need excluding either way.</strong> The display walk skips <code>node.group</code>; <code>getSelectedNodes()</code> does not, so it needs the same guard or grouped grids start returning group nodes as if they were data.</li>
+            <li><strong>No test covers this today.</strong> Whichever option you pick, it needs one, since the behavior is currently defined only by which API call happens to be in the file.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="already-done">
+        <div class="sec-head"><h2>The other item, already done</h2></div>
+        <div class="callout decision">
+          <span class="tag">Decided</span>
+          You called it: <code>CollectorFactory.ts</code> was dead, so it is deleted.
+        </div>
+        <div class="prose">
+          <p>
+            <code>determineCollector</code>, <code>validateCollectorConfig</code>,
+            <code>getCollectorInfo</code> and <code>CollectorType</code> had exactly one reference
+            between them, the re-export in <code>collectors/index.ts</code>.
+            <code>AgGrid.tsx</code> hand-rolls its own <code>getCollector()</code> and imports only
+            the three collector classes, so the factory decided nothing. The MINIMAL branch added
+            to <code>getCollectorInfo</code> during this same batch of work was unreachable the
+            moment it was written.
+          </p>
+          <p>
+            The evidence that it was truly dead is that the built bundle is byte-identical
+            afterwards, down to the content hash: <code>index-BT-Kuiip.js</code> at 6,040.64 kB
+            before and after. Rolldown had already tree-shaken it, so the commit removes 89 lines
+            of source that shipped nothing. Committed as <code>9686aa4</code>, 114 tests still
+            passing.
+          </p>
+        </div>
+      </section>
+
+      <section id="your-call">
+        <div class="sec-head"><h2>Your call</h2></div>
+        <p class="sec-intro">Pick one, add a note if you want, then copy the block back to me.</p>
+
+        <div class="pick">
+          <label class="pick-opt">
+            <input type="radio" name="choice" value="A" data-label="Match legacy via getSelectedNodes()">
+            <span>
+              <span class="pick-h">A &middot; Match legacy via getSelectedNodes() <em>(recommended)</em></span>
+              <span class="pick-d">Same selection semantics in every mode. Cost is proportional to the selection, not the row count.</span>
+            </span>
+          </label>
+          <label class="pick-opt">
+            <input type="radio" name="choice" value="B" data-label="Keep visible-only, document it">
+            <span>
+              <span class="pick-h">B &middot; Keep visible-only, document it</span>
+              <span class="pick-d">No code change. MINIMAL means "selected among displayed rows", stated in the docstring.</span>
+            </span>
+          </label>
+          <label class="pick-opt">
+            <input type="radio" name="choice" value="C" data-label="Return both sets">
+            <span>
+              <span class="pick-h">C &middot; Return both sets</span>
+              <span class="pick-d">Add a second attribute for the visible-only selection. More surface, bigger payload.</span>
+            </span>
+          </label>
+          <label class="pick-opt">
+            <input type="radio" name="choice" value="D" data-label="Make it a parameter">
+            <span>
+              <span class="pick-h">D &middot; Make it a parameter</span>
+              <span class="pick-d">Caller chooses. Most flexible, permanent extra concept in the signature.</span>
+            </span>
+          </label>
+
+          <label class="pick-lab" for="pick-note">Note (optional)</label>
+          <textarea id="pick-note" class="pick-note" rows="2" placeholder="Anything you want me to factor in"></textarea>
+
+          <div class="pick-status" id="pick-status">Nothing selected yet</div>
+          <label class="pick-lab" for="pick-out">Copy this back to me</label>
+          <textarea id="pick-out" class="pick-note" rows="7" readonly aria-live="polite"></textarea>
+          <div class="pick-actions">
+            <button type="button" class="pick-btn" id="pick-copy">Copy to clipboard</button>
+            <button type="button" class="pick-btn ghost" id="pick-reset">Clear</button>
+            <span class="pick-copied" id="pick-copied">Copied</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="sources">
+        <div class="src-title">Built from</div>
+        <ul class="src-list">
+          <li><span class="mono">src/st_aggrid/frontend/src/collectors/MinimalCollector.ts</span> lines 51 to 62, the display walk that also collects the selection</li>
+          <li><span class="mono">src/st_aggrid/frontend/src/collectors/LegacyCollector.ts</span> line 163, <span class="mono">forEachNode</span> over every row</li>
+          <li><span class="mono">src/st_aggrid/AgGridReturn.py</span> line 550, the Python-side filter on <span class="mono">isSelected</span></li>
+          <li><span class="mono">node_modules/ag-grid-community/dist/types/src/api/gridApi.d.ts</span> line 136, confirming <span class="mono">getSelectedNodes()</span> exists in 35.3</li>
+          <li>Bundle hashes before and after the CollectorFactory deletion, from two <span class="mono">npm run build</span> runs</li>
+        </ul>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+        var out = document.getElementById("pick-out");
+        var status = document.getElementById("pick-status");
+        var note = document.getElementById("pick-note");
+        var copied = document.getElementById("pick-copied");
+
+        function render() {
+          var pick = document.querySelector('input[name="choice"]:checked');
+          var lines = ["streamlit-aggrid-v2: MINIMAL selected_rows semantics", ""];
+          if (pick) {
+            lines.push("choice: " + pick.value + "  " + pick.getAttribute("data-label"));
+            status.textContent = "Option " + pick.value + " selected. Ready to copy.";
+            status.className = "pick-status ready";
+          } else {
+            lines.push("choice: NOT ANSWERED YET");
+            status.textContent = "Nothing selected yet";
+            status.className = "pick-status";
+          }
+          var n = note.value.trim();
+          if (n) { lines.push("note:   " + n); }
+          if (pick) { lines.push("", "Go ahead and implement this."); }
+          out.value = lines.join("\n");
+        }
+
+        document.addEventListener("change", function (e) {
+          if (e.target.name === "choice") { render(); }
+        });
+        note.addEventListener("input", render);
+
+        document.getElementById("pick-copy").addEventListener("click", function () {
+          function flash() {
+            copied.classList.add("on");
+            setTimeout(function () { copied.classList.remove("on"); }, 1600);
+          }
+          function legacy() {
+            out.removeAttribute("readonly");
+            out.select();
+            try { document.execCommand("copy"); flash(); } catch (err) { /* select manually */ }
+            out.setAttribute("readonly", "readonly");
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(out.value).then(flash, legacy);
+          } else { legacy(); }
+        });
+
+        document.getElementById("pick-reset").addEventListener("click", function () {
+          var checked = document.querySelector('input[name="choice"]:checked');
+          if (checked) { checked.checked = false; }
+          note.value = "";
+          render();
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>
