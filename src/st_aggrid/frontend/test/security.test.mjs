@@ -7,6 +7,7 @@ import test from "node:test"
 import { deepMap } from "../.test-build/utils.js"
 import {
   applyExportFormulaProtection,
+  didCsvFormulaPolicyChange,
   neutralizeCsvFormula,
   protectCsvExportParams,
 } from "../.test-build/utils/csvExport.js"
@@ -122,6 +123,21 @@ test("allow_unsafe_csv_formulas gates protection on the export format it guards"
   const unsafe = {}
   applyExportFormulaProtection(unsafe, true)
   assert.equal(unsafe.defaultCsvExportParams, undefined)
+
+  const unsafeWithUserParams = {
+    defaultCsvExportParams: { fileName: "raw.csv" },
+  }
+  applyExportFormulaProtection(unsafeWithUserParams, true)
+  assert.deepEqual(unsafeWithUserParams.defaultCsvExportParams, {
+    fileName: "raw.csv",
+  })
+})
+
+test("CSV formula policy changes are detected across Streamlit reruns", () => {
+  assert.equal(didCsvFormulaPolicyChange(false, false), false)
+  assert.equal(didCsvFormulaPolicyChange(true, true), false)
+  assert.equal(didCsvFormulaPolicyChange(false, true), true)
+  assert.equal(didCsvFormulaPolicyChange(true, false), true)
 })
 
 test("every --st-* variable ThemeParser reads is in STREAMLIT_THEME_VARS", () => {

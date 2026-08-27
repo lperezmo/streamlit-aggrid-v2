@@ -38,6 +38,7 @@ import {
 
 import { State } from "./types/AgGridTypes"
 import { parseGridOptions, parseData } from "./utils/parsers"
+import { didCsvFormulaPolicyChange } from "./utils/csvExport"
 
 export interface AgGridProps {
   componentData: AgGridDataShape
@@ -276,8 +277,16 @@ class AgGrid extends React.Component<AgGridProps, State> {
     //Check update on grid options. TODO: exclude `initial` options
     const prevGridOptions = omit(prevProps.componentData?.gridOptions, "rowData")
     const currGridOptions = omit(this.props.componentData.gridOptions, "rowData")
+    const csvFormulaPolicyChanged = didCsvFormulaPolicyChange(
+      this.props.componentData.allow_unsafe_csv_formulas,
+      prevProps.componentData?.allow_unsafe_csv_formulas
+    )
 
-    if (!isEqual(prevGridOptions, currGridOptions)) {
+    // CSV formula protection depends on a component prop outside gridOptions.
+    // Reparse when that prop changes; parseGridOptions writes an explicit
+    // defaultCsvExportParams value so switching to unsafe can clear the wrapper
+    // installed by an earlier safe render.
+    if (!isEqual(prevGridOptions, currGridOptions) || csvFormulaPolicyChanged) {
       let go = parseGridOptions(this.props.componentData, this.props.parentElement)
       // Row data travels on its own (and is a raw JSON string when Python used
       // use_json_serialization), so pushing it here would hand AG Grid a
