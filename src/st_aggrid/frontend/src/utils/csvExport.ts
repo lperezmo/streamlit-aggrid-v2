@@ -88,17 +88,32 @@ export function protectCsvExportParams(params: any = {}): any {
 }
 
 /**
+ * Whether a Streamlit rerun changed the CSV formula policy.
+ *
+ * The flag lives beside gridOptions in component data, so comparing gridOptions
+ * alone misses this transition.
+ */
+export function didCsvFormulaPolicyChange(
+  currentAllowUnsafe: boolean | undefined,
+  previousAllowUnsafe: boolean | undefined
+): boolean {
+  return currentAllowUnsafe !== previousAllowUnsafe
+}
+
+/**
  * Attach the neutralizing callbacks to a gridOptions object unless the app
  * opted out with allow_unsafe_csv_formulas.
+ *
+ * Always assign defaultCsvExportParams, including the unsafe case. On a rerun,
+ * AG Grid needs an explicit undefined value to clear a wrapper installed by a
+ * previous safe render.
  */
 export function applyExportFormulaProtection(
   gridOptions: any,
   allowUnsafeFormulas: boolean | undefined
 ): void {
-  if (allowUnsafeFormulas) {
-    return
-  }
-  gridOptions.defaultCsvExportParams = protectCsvExportParams(
-    gridOptions.defaultCsvExportParams
-  )
+  const userParams = gridOptions.defaultCsvExportParams
+  gridOptions.defaultCsvExportParams = allowUnsafeFormulas
+    ? userParams
+    : protectCsvExportParams(userParams)
 }
