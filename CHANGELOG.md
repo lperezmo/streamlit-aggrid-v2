@@ -1,6 +1,26 @@
 # CHANGELOG
 
 
+## v0.3.4 (2026-08-27)
+
+### Bug Fixes
+
+- Refresh CSV formula policy across reruns
+  ([`2201e9a`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/2201e9a6921ae3c664cc2247c0996130339aec5e))
+
+Rebuild grid options when allow_unsafe_csv_formulas changes outside the gridOptions object. Reuse
+  the tested policy helper in production and write defaultCsvExportParams explicitly so moving from
+  safe to unsafe clears the prior wrapper.
+
+- **ci**: Pin GitPython for semantic release
+  ([`39608e9`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/39608e9188b009a8a7f24a837f4e056fdd0f64d1))
+
+### Chores
+
+- Bump demo app requirement to v0.3.3
+  ([`79b5c95`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/79b5c9517849f0f037a0b48571ca754ea6b5de6c))
+
+
 ## v0.3.3 (2026-08-21)
 
 ### Bug Fixes
