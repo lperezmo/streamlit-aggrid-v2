@@ -23,6 +23,7 @@ import pandas as pd
 import pytest
 
 from st_aggrid import AgGrid
+from st_aggrid._event_catalog import AG_GRID_VERSION
 
 from grid_stub import render_grid
 
@@ -73,7 +74,7 @@ def test_typo_is_reported_with_the_intended_name(monkeypatch):
     assert "never" in message
     # Which catalog was consulted, so a name added by a newer AG Grid than the
     # bundled one can be recognized as a version skew rather than a typo.
-    assert "35.3.0" in message
+    assert AG_GRID_VERSION in message
 
 
 def test_unknown_name_without_a_close_match_gets_no_suggestion(monkeypatch):

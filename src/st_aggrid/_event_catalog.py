@@ -4,14 +4,14 @@ Do not edit by hand. Regenerate with::
 
     python scripts/gen_event_catalog.py
 
-Generated from ag-grid-community 35.3.0, the version pinned in
+Generated from ag-grid-community 36.2.0, the version pinned in
 src/st_aggrid/frontend/package.json. CI runs the generator with ``--check``, so
 this file cannot drift from the bundled AG Grid without failing the build.
 """
 
 # The ag-grid-community release these names were read from. Reported in the
 # warning text so a user who hits it can tell which catalog was consulted.
-AG_GRID_VERSION = "35.3.0"
+AG_GRID_VERSION = "36.2.0"
 
 # _PUBLIC_EVENTS: what api.addEventListener publicly supports, and therefore
 # exactly what update_on may name.
@@ -25,6 +25,10 @@ GRID_EVENTS = frozenset(
         "bodyScrollEnd",
         "bulkEditingStarted",
         "bulkEditingStopped",
+        "calculatedColumnCreated",
+        "calculatedColumnExpressionChanged",
+        "calculatedColumnRemoved",
+        "calculatedColumnValidationStateChanged",
         "cellClicked",
         "cellContextMenu",
         "cellDoubleClicked",
@@ -50,6 +54,7 @@ GRID_EVENTS = frozenset(
         "columnHeaderContextMenu",
         "columnHeaderMouseLeave",
         "columnHeaderMouseOver",
+        "columnHeaderNameChanged",
         "columnMenuVisibleChanged",
         "columnMoved",
         "columnPinned",
@@ -83,6 +88,7 @@ GRID_EVENTS = frozenset(
         "gridReady",
         "gridSizeChanged",
         "headerFocused",
+        "issueRaised",
         "modelUpdated",
         "newColumnsLoaded",
         "paginationChanged",
@@ -138,6 +144,7 @@ COLUMN_ONLY_EVENTS = frozenset(
         "firstRightPinnedChanged",
         "formulaRefChanged",
         "headerHighlightChanged",
+        "headerNameChanged",
         "lastLeftPinnedChanged",
         "leftChanged",
         "menuVisibleChanged",
@@ -193,10 +200,12 @@ INTERNAL_EVENTS = frozenset(
         "checkboxChanged",
         "columnContainerWidthChanged",
         "columnGroupHeaderHeightChanged",
+        "columnHeaderEditHighlightChanged",
         "columnHeaderHeightChanged",
         "columnHoverChanged",
         "columnPanelItemDragEnd",
         "columnPanelItemDragStart",
+        "columnShowValuesAsChanged",
         "dataTypesInferred",
         "displayedColumnsWidthChanged",
         "displayedRowsChanged",
@@ -209,6 +218,7 @@ INTERNAL_EVENTS = frozenset(
         "flashCells",
         "fullWidthRowFocused",
         "gridOptionsChanged",
+        "gridViewportWidthChanged",
         "headerHeightChanged",
         "headerRowsChanged",
         "heightScaleChanged",
@@ -232,6 +242,7 @@ INTERNAL_EVENTS = frozenset(
         "scrollbarWidthChanged",
         "showRowGroupColsSetChanged",
         "sideBarUpdated",
+        "stickyBottomOffsetChanged",
         "stickyTopOffsetChanged",
         "storeUpdated",
         "stylesChanged",

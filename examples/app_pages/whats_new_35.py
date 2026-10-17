@@ -6,8 +6,8 @@ import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
 st.markdown(
-    "AG Grid v35 (released March 2026, current patch **35.3.0**) ships a batch of "
-    "new features on top of v34. Below are the highlights and two runnable demos."
+    "AG Grid v35 (released March 2026) shipped a batch of new features on top of "
+    "v34 (the bundled grid is now v36). Below are the highlights and two runnable demos."
 )
 
 st.markdown(
