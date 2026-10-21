@@ -12,6 +12,20 @@ AG Grid 36 defaults the fontWeight theme param to 400 instead of inheriting the 
   built-in recipe and custom themes now pass fontWeight: 'inherit' so grids keep matching Streamlit
   text; a fontWeight in custom params still wins.
 
+- **deps**: Upgrade React and react-dom to 19
+  ([`16da2ac`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/16da2ac538ddebcf71db54a96f1dc52055874704))
+
+Moves react, react-dom, @types/react and @types/react-dom to 19 together. Dependabot's #34 bumped
+  react alone, leaving react-dom on 18, which cannot run against react 19. React 19's types make
+  createRef() return RefObject<T | null>, so the grid container ref is typed to match.
+
+Also groups the four react packages in dependabot.yml so future bumps arrive as one PR, the same way
+  the AG Grid packages do.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+
+Claude-Session: https://claude.ai/code/session_0159ZwZMuvgsvd4nHEWKKL4e
+
 ### Build System
 
 - **deps**: Bump tornado to 6.5.10 in uv.lock
