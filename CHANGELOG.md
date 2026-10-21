@@ -1,6 +1,292 @@
 # CHANGELOG
 
 
+## v0.4.0 (2026-10-21)
+
+### Bug Fixes
+
+- Keep inherited grid font weight under AG Grid 36
+  ([`9f8fb3c`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/9f8fb3c35a21ccd76c4ec5db83aed345e80c04a0))
+
+AG Grid 36 defaults the fontWeight theme param to 400 instead of inheriting the page weight. Every
+  built-in recipe and custom themes now pass fontWeight: 'inherit' so grids keep matching Streamlit
+  text; a fontWeight in custom params still wins.
+
+### Build System
+
+- **deps**: Bump tornado to 6.5.10 in uv.lock
+  ([`cf9d129`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/cf9d129da4e764854b66093324ff830453e0c49e))
+
+Tornado is not a declared dependency; it arrives through streamlit and was pinned at 6.5.7, which
+  three Dependabot advisories flag (GHSA-mpf4-983q-p7j4, GHSA-8423-8fgw-73vq, GHSA-wwv5-g3v4-889x),
+  all fixed in 6.5.8. Resolving with `uv lock --upgrade-package tornado` lands 6.5.10, which every
+  Streamlit version in the CI matrix accepts.
+
+Two unrelated lines move with it because the committed lock had drifted from pyproject.toml: the
+  editable package version (0.3.2 -> 0.3.4) and the marker on exceptiongroup's typing-extensions
+  edge. A bare `uv lock` produces both without touching tornado, so they are the lockfile catching
+  up, not fallout from the bump.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+Claude-Session: https://claude.ai/code/session_01G5ZV88SRC1V33UqPRiYBj7
+
+### Chores
+
+- Bump demo app requirement to v0.3.4
+  ([`1d7e26f`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/1d7e26fada1701615711e01fa4652b411c2de593))
+
+- Enable weekly Dependabot version updates
+  ([`6caeb61`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/6caeb610dd9415ac38639484aaa938df74b79477))
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+Claude-Session: https://claude.ai/code/session_01URb2F65W76ihhnZKemb7dx
+
+- Group Dependabot security updates into one PR per ecosystem
+  ([`8c3a8cb`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/8c3a8cb35875956f123ab0050806f91f2cabb0d3))
+
+- **deps**: Bump certifi
+  ([`0001060`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/000106052044b60f505c24e24dbc071e83555c0d))
+
+Bumps the uv-security group with 1 update in the / directory:
+  [certifi](https://github.com/certifi/python-certifi).
+
+Updates `certifi` from 2026.2.25 to 2026.10.19 -
+  [Commits](https://github.com/certifi/python-certifi/compare/2026.02.25...2026.10.19)
+
+--- updated-dependencies: - dependency-name: certifi dependency-version: 2026.10.19
+
+dependency-type: indirect
+
+dependency-group: uv-security ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump the npm-version group
+  ([`ca84081`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/ca8408173dfa93ddd07605b565f01d8d14b223fb))
+
+Bumps the npm-version group in /src/st_aggrid/frontend with 5 updates:
+
+| Package | From | To | | --- | --- | --- | |
+  [@fontsource/source-sans-pro](https://github.com/fontsource/font-files/tree/HEAD/fonts/google/source-sans-pro)
+  | `5.2.5` | `5.3.0` | | [date-fns](https://github.com/date-fns/date-fns) | `4.1.0` | `4.4.0` | |
+  [@types/lodash](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/lodash) |
+  `4.17.24` | `4.17.26` | |
+  [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/tree/HEAD/packages/plugin-react)
+  | `6.0.3` | `6.1.2` | | [vite](https://github.com/vitejs/vite/tree/HEAD/packages/vite) | `8.1.4` |
+  `8.3.4` |
+
+Updates `@fontsource/source-sans-pro` from 5.2.5 to 5.3.0 -
+  [Changelog](https://github.com/fontsource/font-files/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/fontsource/font-files/commits/HEAD/fonts/google/source-sans-pro)
+
+Updates `date-fns` from 4.1.0 to 4.4.0 - [Release
+  notes](https://github.com/date-fns/date-fns/releases) -
+  [Commits](https://github.com/date-fns/date-fns/compare/v4.1.0...v4.4.0)
+
+Updates `@types/lodash` from 4.17.24 to 4.17.26 - [Release
+  notes](https://github.com/DefinitelyTyped/DefinitelyTyped/releases) -
+  [Commits](https://github.com/DefinitelyTyped/DefinitelyTyped/commits/HEAD/types/lodash)
+
+Updates `@vitejs/plugin-react` from 6.0.3 to 6.1.2 - [Release
+  notes](https://github.com/vitejs/vite-plugin-react/releases) -
+  [Changelog](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/CHANGELOG.md)
+  -
+  [Commits](https://github.com/vitejs/vite-plugin-react/commits/plugin-react@6.1.2/packages/plugin-react)
+
+Updates `vite` from 8.1.4 to 8.3.4 - [Release notes](https://github.com/vitejs/vite/releases) -
+  [Changelog](https://github.com/vitejs/vite/blob/main/packages/vite/CHANGELOG.md) -
+  [Commits](https://github.com/vitejs/vite/commits/v8.3.4/packages/vite)
+
+--- updated-dependencies: - dependency-name: "@fontsource/source-sans-pro" dependency-version: 5.3.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+dependency-group: npm-version
+
+- dependency-name: date-fns dependency-version: 4.4.0
+
+- dependency-name: "@types/lodash" dependency-version: 4.17.26
+
+dependency-type: direct:development
+
+update-type: version-update:semver-patch
+
+- dependency-name: "@vitejs/plugin-react" dependency-version: 6.1.2
+
+- dependency-name: vite dependency-version: 8.3.4
+
+dependency-group: npm-version ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump the uv-version group with 5 updates
+  ([`15c0d98`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/15c0d98635fba0e7ba23477dbbdf4038c8252844))
+
+Bumps the uv-version group with 5 updates:
+
+| Package | From | To | | --- | --- | --- | | [streamlit](https://github.com/streamlit/streamlit) |
+  `1.55.0` | `1.65.0` | | [playwright](https://github.com/microsoft/playwright-python) | `1.58.0` |
+  `1.64.0` | | [pytest](https://github.com/pytest-dev/pytest) | `9.0.3` | `9.1.1` | |
+  [pytest-playwright](https://github.com/microsoft/playwright-pytest) | `0.7.2` | `0.10.0` | |
+  [ruff](https://github.com/astral-sh/ruff) | `0.16.0` | `0.17.0` |
+
+Updates `streamlit` from 1.55.0 to 1.65.0 - [Release
+  notes](https://github.com/streamlit/streamlit/releases) -
+  [Commits](https://github.com/streamlit/streamlit/compare/1.55.0...1.65.0)
+
+Updates `playwright` from 1.58.0 to 1.64.0 - [Release
+  notes](https://github.com/microsoft/playwright-python/releases) -
+  [Commits](https://github.com/microsoft/playwright-python/compare/v1.58.0...v1.64.0)
+
+Updates `pytest` from 9.0.3 to 9.1.1 - [Release
+  notes](https://github.com/pytest-dev/pytest/releases) -
+  [Changelog](https://github.com/pytest-dev/pytest/blob/main/CHANGELOG.rst) -
+  [Commits](https://github.com/pytest-dev/pytest/compare/9.0.3...9.1.1)
+
+Updates `pytest-playwright` from 0.7.2 to 0.10.0 - [Release
+  notes](https://github.com/microsoft/playwright-pytest/releases) -
+  [Commits](https://github.com/microsoft/playwright-pytest/compare/v0.7.2...v0.10.0)
+
+Updates `ruff` from 0.16.0 to 0.17.0 - [Release notes](https://github.com/astral-sh/ruff/releases) -
+  [Changelog](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/ruff/compare/0.16.0...0.17.0)
+
+--- updated-dependencies: - dependency-name: streamlit dependency-version: 1.65.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+dependency-group: uv-version
+
+- dependency-name: playwright dependency-version: 1.64.0
+
+dependency-type: direct:development
+
+- dependency-name: pytest dependency-version: 9.1.1
+
+- dependency-name: pytest-playwright dependency-version: 0.10.0
+
+- dependency-name: ruff dependency-version: 0.17.0
+
+dependency-group: uv-version ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump urllib3
+  ([`43fa3d4`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/43fa3d4299f3ae2d0bd92347423ba36fcacfb596))
+
+Bumps the uv-security group with 1 update in the / directory:
+  [urllib3](https://github.com/urllib3/urllib3).
+
+Updates `urllib3` from 2.7.0 to 2.8.0 - [Release notes](https://github.com/urllib3/urllib3/releases)
+  - [Changelog](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) -
+  [Commits](https://github.com/urllib3/urllib3/compare/2.7.0...2.8.0)
+
+--- updated-dependencies: - dependency-name: urllib3 dependency-version: 2.8.0
+
+dependency-type: indirect
+
+dependency-group: uv-security ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps-dev**: Bump @types/node in /src/st_aggrid/frontend
+  ([`22c1183`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/22c118300e67ab3a82c2b96362221a1fbebf0d4b))
+
+Bumps [@types/node](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/HEAD/types/node) from
+  22.19.15 to 26.6.5. - [Release notes](https://github.com/DefinitelyTyped/DefinitelyTyped/releases)
+  - [Commits](https://github.com/DefinitelyTyped/DefinitelyTyped/commits/HEAD/types/node)
+
+--- updated-dependencies: - dependency-name: "@types/node" dependency-version: 26.6.5
+
+dependency-type: direct:development
+
+update-type: version-update:semver-major ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps-dev**: Bump brace-expansion
+  ([`a028a98`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/a028a98833c54f11a29d4e2fd2c3257d82f9b256))
+
+Bumps the npm-security group with 1 update in the /src/st_aggrid/frontend directory:
+  [brace-expansion](https://github.com/juliangruber/brace-expansion).
+
+Updates `brace-expansion` from 5.0.8 to 5.0.12 - [Release
+  notes](https://github.com/juliangruber/brace-expansion/releases) -
+  [Commits](https://github.com/juliangruber/brace-expansion/compare/v5.0.8...v5.0.12)
+
+--- updated-dependencies: - dependency-name: brace-expansion dependency-version: 5.0.12
+
+dependency-type: indirect
+
+dependency-group: npm-security ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps-dev**: Bump ruff from 0.17.0 to 0.17.1 in the uv-version group
+  ([`f138cf7`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/f138cf7f53b3fd48717842031acad3b5bffcba86))
+
+Bumps the uv-version group with 1 update: [ruff](https://github.com/astral-sh/ruff).
+
+Updates `ruff` from 0.17.0 to 0.17.1 - [Release notes](https://github.com/astral-sh/ruff/releases) -
+  [Changelog](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/ruff/compare/0.17.0...0.17.1)
+
+--- updated-dependencies: - dependency-name: ruff dependency-version: 0.17.1
+
+dependency-type: direct:development
+
+update-type: version-update:semver-patch
+
+dependency-group: uv-version ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+### Continuous Integration
+
+- Wait for PyPI before bumping the demo app
+  ([`0494bab`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/0494bab3c0746fde00a505455bd64b85cdf6ca1d))
+
+bump-demo only needed the release job, so it ran alongside publish and pushed the requirements.txt
+  bump before the wheel reached PyPI. In run 31558285401 the bump commit landed at 02:54:04 while
+  the "Publish to PyPI" step did not start until 02:54:23, so the demo app redeployed against a
+  version that did not exist yet.
+
+bump-demo now needs publish as well, and then polls PyPI with pip download until the new version
+  actually resolves and fetches, giving up after ten minutes rather than sleeping a fixed guess.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+Claude-Session: https://claude.ai/code/session_01K62F3pwMghQtDV7MoAuEYX
+
+### Features
+
+- Upgrade AG Grid to v36.2.0
+  ([`292f62c`](https://github.com/lperezmo/streamlit-aggrid-v2/commit/292f62c226cece4ac08eb010517cb046424f51fb))
+
+Bumps the bundled AG Grid (ag-grid-community, ag-grid-enterprise, ag-grid-react) from v35.3.0 to
+  v36.2.0 and AG Charts Enterprise from 13.3.0 to 14.2.0. Replaces Dependabot PRs #24, #25 and #26,
+  which bumped one grid package each and could not pass CI on their own: npm nested a second
+  ag-grid-community 35.3.0 and tsc rejected the mixed types. Grid 36 also needs charts 14, which
+  none of them bumped.
+
+- Regenerate src/st_aggrid/_event_catalog.py (12 new event names) - Read AG_GRID_VERSION in
+  test_update_on_validation instead of hardcoding the version string - Update the version shown in
+  the README and the showcase footer - Add an ag-grid Dependabot group so grid and charts packages
+  move together in a single PR, majors included
+
+No source changes were needed. No Python API changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+Claude-Session: https://claude.ai/code/session_01CkFbB6oo8Md3jfL5gpLihN
+
+
 ## v0.3.4 (2026-08-27)
 
 ### Bug Fixes
