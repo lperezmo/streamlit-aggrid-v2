@@ -141,6 +141,6 @@ page.run()
 st.divider()
 st.caption(
     "Built with [streamlit-aggrid-v2](https://github.com/lperezmo/streamlit-aggrid-v2) · "
-    "AG Grid v35.3.0 · "
+    "AG Grid v36.2.0 · "
     "Streamlit Custom Components v2"
 )

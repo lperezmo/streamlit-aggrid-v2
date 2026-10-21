@@ -179,6 +179,9 @@ class ThemeParser {
         iconSetQuartzRegular: iconSetQuartzRegular
     }
 
+    // fontWeight: 'inherit' is passed next to every streamlitFontFamily() call:
+    // AG Grid 36 defaults the theme weight to 400 instead of inheriting it, and
+    // the grid should keep matching the surrounding Streamlit text.
     private streamlitFontFamily(streamlitTheme: StreamlitThemeFromCSS): string[] {
         // streamlitTheme.font is a full computed/normalized stack, e.g. '"Source Sans", sans-serif'.
         // getComputedStyle / --st-font wrap multi-word families in quotes; strip them so AG Grid
@@ -198,7 +201,7 @@ class ThemeParser {
 
         theme = theme.withParams({
             accentColor: streamlitTheme.primaryColor,
-            fontFamily: this.streamlitFontFamily(streamlitTheme),
+            fontFamily: this.streamlitFontFamily(streamlitTheme), fontWeight: 'inherit',
             foregroundColor: streamlitTheme.textColor,
             backgroundColor: streamlitTheme.backgroundColor
         }).withPart(iconSetQuartzLight)
@@ -212,21 +215,21 @@ class ThemeParser {
 
     quartzRecipe(el?: Element | ShadowRoot | null) {
         const streamlitTheme = getStreamlitThemeFromCSS(el)
-        let theme: Theme = themeQuartz.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
+        let theme: Theme = themeQuartz.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme), fontWeight: 'inherit'})
         if (streamlitTheme.base === 'dark') theme = theme.withPart(colorSchemeDark)
         return theme
     }
 
     alpineRecipe(el?: Element | ShadowRoot | null) {
         const streamlitTheme = getStreamlitThemeFromCSS(el)
-        let theme: Theme = themeAlpine.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
+        let theme: Theme = themeAlpine.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme), fontWeight: 'inherit'})
         if (streamlitTheme.base === 'dark') theme = theme.withPart(colorSchemeDark)
         return theme
     }
 
     balhamRecipe(el?: Element | ShadowRoot | null) {
         const streamlitTheme = getStreamlitThemeFromCSS(el)
-        let theme: Theme = themeBalham.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
+        let theme: Theme = themeBalham.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme), fontWeight: 'inherit'})
         if (streamlitTheme.base === 'dark') theme = theme.withPart(colorSchemeDark)
         return theme
     }
@@ -236,12 +239,12 @@ class ThemeParser {
         if (streamlitTheme.base === 'dark') {
             return themeMaterial
                 .withParams({
-                    fontFamily: this.streamlitFontFamily(streamlitTheme),
+                    fontFamily: this.streamlitFontFamily(streamlitTheme), fontWeight: 'inherit',
                     headerTextColor: streamlitTheme.textColor,
                 })
                 .withPart(colorSchemeDark)
         }
-        return themeMaterial.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme)})
+        return themeMaterial.withParams({fontFamily: this.streamlitFontFamily(streamlitTheme), fontWeight: 'inherit'})
     }
 
     customRecipe(gridOptionsTheme: stAggridThemeOptions) : Theme {
@@ -249,6 +252,10 @@ class ThemeParser {
 
         // A custom theme built without an explicit base still has to render.
         let theme: Theme = this.baseMapper[base] ?? this.baseMapper['quartz']
+
+        // AG Grid 36 pins fontWeight to 400; keep inheriting the page weight
+        // as v35 did. A fontWeight in params still wins.
+        theme = theme.withParams({fontWeight: 'inherit'})
 
         if (! isEmpty(params)){
             theme = theme.withParams(params)

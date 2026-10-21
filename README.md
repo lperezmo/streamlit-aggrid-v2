@@ -9,7 +9,7 @@
 
 AG Grid component for Streamlit - interactive tables, editing, filtering, sorting, grouping & more.
 
-Built on [AG Grid](https://www.ag-grid.com/) v35.3.0 with [Streamlit Custom Components v2](https://docs.streamlit.io/develop/concepts/custom-components).
+Built on [AG Grid](https://www.ag-grid.com/) v36.2.0 with [Streamlit Custom Components v2](https://docs.streamlit.io/develop/concepts/custom-components).
 
 ## Acknowledgments
 
@@ -46,7 +46,7 @@ The original [streamlit-aggrid](https://github.com/PablocFonseca/streamlit-aggri
 | | **streamlit-aggrid** (original) | **streamlit-aggrid-v2** |
 |---|---|---|
 | **Component model** | CCv1 - iframe + postMessage | CCv2 - direct DOM rendering |
-| **AG Grid version** | v34 | v35.3.0 |
+| **AG Grid version** | v34 | v36.2.0 |
 | **Themes** | 3 themes, no dark mode for quartz | 4 themes, automatic dark/light detection |
 | **Build toolchain** | webpack / CRA | Vite + ESM |
 | **React** | React 17 | React 18 |

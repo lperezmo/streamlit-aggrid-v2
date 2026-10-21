@@ -25,6 +25,14 @@ updates:
       prefix: "chore"
       include: "scope"
     groups:
+      # AG Grid's packages must share one version, and ag-charts-enterprise has
+      # to match the charts major the grid was built against. Separate PRs for
+      # them can never pass CI (npm nests a second ag-grid-community and tsc
+      # rejects the mixed types), so they move together, majors included.
+      # Listed first so it claims these packages before npm-version does.
+      ag-grid:
+        applies-to: version-updates
+        patterns: ["ag-grid-*", "ag-charts-*"]
       npm-security:
         applies-to: security-updates
         patterns: ["*"]
