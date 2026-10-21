@@ -33,6 +33,12 @@ updates:
       ag-grid:
         applies-to: version-updates
         patterns: ["ag-grid-*", "ag-charts-*"]
+      # react and react-dom must stay on the same major (react-dom pins react
+      # as a peer), and the type packages follow them. Bumped one at a time,
+      # a major lands half-applied and breaks the build.
+      react:
+        applies-to: version-updates
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
       npm-security:
         applies-to: security-updates
         patterns: ["*"]

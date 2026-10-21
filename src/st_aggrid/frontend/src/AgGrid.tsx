@@ -49,7 +49,7 @@ export interface AgGridProps {
 class AgGrid extends React.Component<AgGridProps, State> {
   public state: State
 
-  private gridContainerRef: React.RefObject<HTMLDivElement>
+  private gridContainerRef: React.RefObject<HTMLDivElement | null>
   private gridApiRef: GridApi | undefined = undefined
   private isGridAutoHeightOn: boolean
   private readonly themeParser: ThemeParser = new ThemeParser()
