@@ -16,7 +16,7 @@ pip install streamlit-aggrid-v2
 
 Python import stays `st_aggrid`. Only the pip name changed.
 
-Requirements: Python 3.10+, Streamlit >= 1.51, pandas >= 1.4.
+Requirements: Python 3.11+, Streamlit >= 1.51, pandas >= 1.4.
 
 ## Quick start
 

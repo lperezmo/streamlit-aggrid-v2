@@ -104,13 +104,13 @@ jobs:
       # drift bites, and these tests are fast.
       - run: uv run --no-sync pytest test/ -m "not browser" -v
 
-  # The package declares requires-python = ">=3.10" but every other job runs
-  # 3.13, so nothing exercised the floor. That gap shipped a real bug: the
+  # Every other job runs 3.13, so this one exercises the requires-python floor
+  # (">=3.11"). That gap once shipped a real bug: when the floor was 3.10, the
   # exception re-wrap used BaseException.add_note, which is 3.11+, and on 3.10
   # it silently fell back to rebuilding the error as a RuntimeError, destroying
   # the original exception type. Nothing caught it because nothing ran 3.10.
   floor:
-    name: Python floor (3.10)
+    name: Python floor (3.11)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -125,12 +125,12 @@ jobs:
         working-directory: src/st_aggrid/frontend
 
       - uses: actions/setup-python@v6
-        with: { python-version: '3.10' }
+        with: { python-version: '3.11' }
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-      - run: uv sync --group dev --python 3.10
+      - run: uv sync --group dev --python 3.11
       - run: uv run --no-sync python -c "import sys; print(sys.version)"
       - run: uv run --no-sync pytest test/ -m "not browser" -v
 
