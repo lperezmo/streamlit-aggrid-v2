@@ -6,57 +6,60 @@ import { columnFormaters } from "../customColumns"
 import { ThemeParser } from "../ThemeParser"
 import { applyExportFormulaProtection } from "./csvExport"
 
+export function parseGridOptions(
+  componentData: any,
+  parentElement?: Element | ShadowRoot | null
+) {
+  let gridOptions: GridOptions = cloneDeep(componentData.gridOptions)
 
-export function parseGridOptions(componentData: any, parentElement?: Element | ShadowRoot | null){
-    let gridOptions: GridOptions = cloneDeep(componentData.gridOptions)
+  if (componentData.allow_unsafe_jscode) {
+    console.warn("flag allow_unsafe_jscode is on.")
+    gridOptions = deepMap(gridOptions, parseJsCodeFromPython, ["rowData"])
+  }
 
-    if (componentData.allow_unsafe_jscode) {
-        console.warn("flag allow_unsafe_jscode is on.")
-        gridOptions = deepMap(gridOptions, parseJsCodeFromPython, ["rowData"])
-    }
+  applyExportFormulaProtection(
+    gridOptions,
+    componentData.allow_unsafe_csv_formulas
+  )
 
-    applyExportFormulaProtection(
-        gridOptions,
-        componentData.allow_unsafe_csv_formulas
+  if (!("getRowId" in gridOptions)) {
+    console.warn(
+      "getRowId was not set. Auto Rows hashes will be used as row ids."
     )
+  }
 
-    if (!("getRowId" in gridOptions)) {
-        console.warn("getRowId was not set. Auto Rows hashes will be used as row ids.")
-    }
+  //adds custom columnFormatters
+  gridOptions.columnTypes = Object.assign(
+    gridOptions.columnTypes || {},
+    columnFormaters
+  )
 
-    //adds custom columnFormatters
-    gridOptions.columnTypes = Object.assign(
-        gridOptions.columnTypes || {},
-        columnFormaters
-    )
+  //processTheming
+  const themeParser = new ThemeParser()
+  const agGridTheme = componentData.theme
+  gridOptions.theme = themeParser.parse(agGridTheme, parentElement)
 
-    //processTheming
-    const themeParser = new ThemeParser()
-    let agGridTheme = componentData.theme
-    gridOptions.theme = themeParser.parse(agGridTheme, parentElement)
-
-    return gridOptions
+  return gridOptions
 }
 
-export function parseData(componentData: any){
+export function parseData(componentData: any) {
+  const rowData = componentData.row_data
+  const gridOptions_rowData = componentData.gridOptions?.rowData
 
-    var rowData = componentData.row_data
-    var gridOptions_rowData = componentData.gridOptions?.rowData
+  // If row_data is directly available (JSON records from Python), use it
+  if (rowData && Array.isArray(rowData)) {
+    return rowData
+  }
 
-    // If row_data is directly available (JSON records from Python), use it
-    if (rowData && Array.isArray(rowData)) {
-        return rowData
+  // If data is null but gridOptions.rowData contains JSON string, parse it
+  if (gridOptions_rowData && typeof gridOptions_rowData === "string") {
+    try {
+      return JSON.parse(gridOptions_rowData)
+    } catch (e) {
+      console.error("Failed to parse gridOptions.rowData as JSON:", e)
+      throw e
     }
+  }
 
-    // If data is null but gridOptions.rowData contains JSON string, parse it
-    if (gridOptions_rowData && typeof gridOptions_rowData === 'string') {
-        try {
-            return JSON.parse(gridOptions_rowData)
-        } catch (e) {
-            console.error('Failed to parse gridOptions.rowData as JSON:', e)
-            throw e
-        }
-    }
-
-    return rowData || []
+  return rowData || []
 }

@@ -16,7 +16,7 @@ updates:
         applies-to: version-updates
         patterns: ["*"]
         update-types: ["minor", "patch"]
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/src/st_aggrid/frontend"
     schedule:
       interval: "weekly"
@@ -27,9 +27,9 @@ updates:
     groups:
       # AG Grid's packages must share one version, and ag-charts-enterprise has
       # to match the charts major the grid was built against. Separate PRs for
-      # them can never pass CI (npm nests a second ag-grid-community and tsc
+      # them can never pass CI (a second ag-grid-community gets nested and tsc
       # rejects the mixed types), so they move together, majors included.
-      # Listed first so it claims these packages before npm-version does.
+      # Listed first so it claims these packages before bun-version does.
       ag-grid:
         applies-to: version-updates
         patterns: ["ag-grid-*", "ag-charts-*"]
@@ -39,10 +39,10 @@ updates:
       react:
         applies-to: version-updates
         patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
-      npm-security:
+      bun-security:
         applies-to: security-updates
         patterns: ["*"]
-      npm-version:
+      bun-version:
         applies-to: version-updates
         patterns: ["*"]
         update-types: ["minor", "patch"]

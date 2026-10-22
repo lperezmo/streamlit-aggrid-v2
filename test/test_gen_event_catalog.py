@@ -193,12 +193,12 @@ def test_a_comment_naming_an_old_event_does_not_add_it(generator, comment):
     assert '"gridEvent0",' in out
 
 
-def test_a_missing_install_says_to_run_npm_ci(generator, tmp_path):
+def test_a_missing_install_says_to_run_bun_install(generator, tmp_path):
     """The likely first failure for a new contributor, so the message has to name
     the command rather than surface a bare path error."""
     module = generator()
     module.TYPES = tmp_path / "nonexistent" / "src"
-    with pytest.raises(module.GenerationError, match="npm ci"):
+    with pytest.raises(module.GenerationError, match="bun install"):
         module.build()
 
 

@@ -1,16 +1,16 @@
-import React, { useState } from "react";
-import "./GridToolBar.css";
+import React, { useState } from "react"
+import "./GridToolBar.css"
 
 interface GridToolBarProps {
-  enabled: boolean;
-  onQuickSearchChange?: (value: string) => void; // Optional
-  onDownloadClick?: () => void; // Optional
-  onManualUpdateClick?: () => void; // Optional
-  onFullscreenClick?: () => void; // Optional
-  showFullscreenButton?: boolean;
-  showDownloadButton?: boolean;
-  showSearch?: boolean;
-  showManualUpdateButton?: boolean; // New prop to enable/disable manual update button
+  enabled: boolean
+  onQuickSearchChange?: (value: string) => void // Optional
+  onDownloadClick?: () => void // Optional
+  onManualUpdateClick?: () => void // Optional
+  onFullscreenClick?: () => void // Optional
+  showFullscreenButton?: boolean
+  showDownloadButton?: boolean
+  showSearch?: boolean
+  showManualUpdateButton?: boolean // New prop to enable/disable manual update button
 }
 
 const GridToolBar: React.FC<GridToolBarProps> = ({
@@ -24,26 +24,30 @@ const GridToolBar: React.FC<GridToolBarProps> = ({
   showSearch = true,
   showManualUpdateButton = false,
 }) => {
-  const [searchValue, setSearchValue] = useState("");
-  const [position, setPosition] = useState({ x: 10, y: 10 });
-  const [collapsed, setCollapsed] = useState(false); // State to manage collapse
+  const [searchValue, setSearchValue] = useState("")
+  const [position, setPosition] = useState({ x: 10, y: 10 })
+  const [collapsed, setCollapsed] = useState(false) // State to manage collapse
 
   const handleQuickSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchValue(value);
-    onQuickSearchChange?.(value); // Call only if defined
-  };
+    const value = e.target.value
+    setSearchValue(value)
+    onQuickSearchChange?.(value) // Call only if defined
+  }
 
   const toggleCollapsed = () => {
-    setCollapsed(!collapsed); // Toggle the collapsed state
-  };
+    setCollapsed(!collapsed) // Toggle the collapsed state
+  }
 
-  if (!enabled) return null;
+  if (!enabled) return null
 
   return (
     <div
       className={`grid-toolbar ${collapsed ? "collapsed" : ""}`}
-      style={{ top: position.y, right: collapsed ? 0 : position.x, left: "auto" }}
+      style={{
+        top: position.y,
+        right: collapsed ? 0 : position.x,
+        left: "auto",
+      }}
     >
       {/* Collapse/Expand Button */}
       <button
@@ -82,24 +86,27 @@ const GridToolBar: React.FC<GridToolBarProps> = ({
           className="drag-handle"
           title="Drag Toolbar"
           onMouseDown={(e) => {
-            const toolbar = e.currentTarget.parentElement;
-            const offsetX = e.clientX - toolbar!.getBoundingClientRect().left;
-            const offsetY = e.clientY - toolbar!.getBoundingClientRect().top;
+            const toolbar = e.currentTarget.parentElement
+            const offsetX = e.clientX - toolbar!.getBoundingClientRect().left
+            const offsetY = e.clientY - toolbar!.getBoundingClientRect().top
 
             const handleMouseMove = (moveEvent: MouseEvent) => {
               setPosition({
-                x: window.innerWidth - moveEvent.clientX - (toolbar!.offsetWidth - offsetX),
+                x:
+                  window.innerWidth -
+                  moveEvent.clientX -
+                  (toolbar!.offsetWidth - offsetX),
                 y: moveEvent.clientY - offsetY,
-              });
-            };
+              })
+            }
 
             const handleMouseUp = () => {
-              document.removeEventListener("mousemove", handleMouseMove);
-              document.removeEventListener("mouseup", handleMouseUp);
-            };
+              document.removeEventListener("mousemove", handleMouseMove)
+              document.removeEventListener("mouseup", handleMouseUp)
+            }
 
-            document.addEventListener("mousemove", handleMouseMove);
-            document.addEventListener("mouseup", handleMouseUp);
+            document.addEventListener("mousemove", handleMouseMove)
+            document.addEventListener("mouseup", handleMouseUp)
           }}
         >
           <svg
@@ -210,7 +217,7 @@ const GridToolBar: React.FC<GridToolBarProps> = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default GridToolBar;
+export default GridToolBar

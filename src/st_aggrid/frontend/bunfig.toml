@@ -1,0 +1,15 @@
+[fmt]
+# Carried over from the old .prettierrc. printWidth 80 is bun fmt's default.
+semi = false
+trailingComma = "es5"
+endOfLine = "lf"
+
+[lint]
+
+[lint.rules]
+"eqeqeq" = ["error", "smart"]
+# gridOptions, row data and JsCode arrive from Python as untyped JSON and are
+# handed to AG Grid as-is, so `any` is the honest type across most of the
+# bridge (81 uses today). Typing them is its own change, not part of the
+# move to bun.
+"@typescript-eslint/no-explicit-any" = "off"

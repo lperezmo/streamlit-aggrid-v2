@@ -33,7 +33,10 @@ export class MinimalCollector extends BaseCollector {
 
     const row: any = {}
     for (const key in data) {
-      if (Object.prototype.hasOwnProperty.call(data, key) && !key.startsWith("::")) {
+      if (
+        Object.prototype.hasOwnProperty.call(data, key) &&
+        !key.startsWith("::")
+      ) {
         row[key] = data[key]
       }
     }
@@ -44,7 +47,9 @@ export class MinimalCollector extends BaseCollector {
     const api = context.state?.api
 
     if (!api) {
-      return this.createErrorResult("MinimalCollector: grid api is not available")
+      return this.createErrorResult(
+        "MinimalCollector: grid api is not available"
+      )
     }
 
     const data: any[] = []

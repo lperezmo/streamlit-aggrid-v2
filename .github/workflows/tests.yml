@@ -23,7 +23,8 @@ jobs:
   # src/st_aggrid/_event_catalog.py is generated from the bundled AG Grid types
   # and committed, so bumping ag-grid-community without regenerating would ship
   # a catalog that no longer matches the grid. What trips this is the lockfile
-  # rather than package.json, because npm ci installs from the lockfile.
+  # rather than package.json, because bun install --frozen-lockfile installs
+  # from the lockfile.
   #
   # Not hypothetical: the scraped JSON snapshot this generator replaced drifted
   # 20 events behind, so update_on would have warned about event names that were
@@ -35,17 +36,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # No `npm run build` here, unlike the other jobs: the generator only reads
+      # No `bun run build` here, unlike the other jobs: the generator only reads
       # the .d.ts files and package.json of the installed ag-grid-community, so
       # the bundle is irrelevant and building it would triple the job time.
-      # --omit=dev is enough because ag-grid-community is a regular dependency,
-      # and the published tarball carries dist/types, so nothing has to compile.
-      - uses: actions/setup-node@v6
+      # --production is enough because ag-grid-community is a regular
+      # dependency, and the published tarball carries dist/types, so nothing has
+      # to compile.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
-      - run: npm ci --omit=dev
+          bun-version-file: src/st_aggrid/frontend/package.json
+      - run: bun install --production --frozen-lockfile
         working-directory: src/st_aggrid/frontend
 
       # The generator imports stdlib only, so a bare interpreter is the whole
@@ -75,12 +75,10 @@ jobs:
       # The conftest builds and installs the wheel; without a frontend build
       # the wheel ships no assets and component discovery cannot resolve
       # asset_dir, failing registration on every Streamlit version.
-      - uses: actions/setup-node@v6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
-      - run: npm ci && npm run build
+          bun-version-file: src/st_aggrid/frontend/package.json
+      - run: bun install --frozen-lockfile && bun run build
         working-directory: src/st_aggrid/frontend
 
       - uses: actions/setup-python@v6
@@ -116,12 +114,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
-      - run: npm ci && npm run build
+          bun-version-file: src/st_aggrid/frontend/package.json
+      - run: bun install --frozen-lockfile && bun run build
         working-directory: src/st_aggrid/frontend
 
       - uses: actions/setup-python@v6
@@ -134,24 +130,42 @@ jobs:
       - run: uv run --no-sync python -c "import sys; print(sys.version)"
       - run: uv run --no-sync pytest test/ -m "not browser" -v
 
-  # The security suite (test/security.test.mjs) is pure node: no browser, no
-  # Python, no wheel. It guards the JsCode rowData boundary, the CSV/Excel
-  # formula neutralization, and the theme-signature variable list, so it runs
-  # as its own cheap job instead of hiding inside the e2e suite.
+  # The frontend unit tests are plain bun test: no browser, no Python, no
+  # wheel. test/security.test.ts guards the JsCode rowData boundary, the
+  # CSV/Excel formula neutralization, and the theme-signature variable list, so
+  # it runs as its own cheap job instead of hiding inside the e2e suite. The
+  # same job type-checks the frontend, tests included.
   frontend-security:
     name: Frontend security tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
-      - run: npm ci
+          bun-version-file: src/st_aggrid/frontend/package.json
+      - run: bun install --frozen-lockfile
         working-directory: src/st_aggrid/frontend
-      - run: npm run test:security
+      - run: bun test
+        working-directory: src/st_aggrid/frontend
+      - run: bun run typecheck
+        working-directory: src/st_aggrid/frontend
+
+  # bun fmt and bun lint are canary-only until they reach a stable release, so
+  # this job runs canary while every other job stays on the bun version pinned
+  # in package.json. Neither needs node_modules.
+  format-and-lint:
+    name: Format and lint frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: canary
+      - run: bun fmt --check .
+        working-directory: src/st_aggrid/frontend
+      - run: bun lint --max-warnings 0 --format github
         working-directory: src/st_aggrid/frontend
 
   e2e:
@@ -164,12 +178,10 @@ jobs:
       # Frontend build is required: the test conftest builds the wheel via
       # `uv build`, and hatchling silently produces an empty wheel if
       # src/st_aggrid/frontend/build/ doesn't exist.
-      - uses: actions/setup-node@v6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: src/st_aggrid/frontend/package-lock.json
-      - run: npm ci && npm run build
+          bun-version-file: src/st_aggrid/frontend/package.json
+      - run: bun install --frozen-lockfile && bun run build
         working-directory: src/st_aggrid/frontend
 
       - uses: actions/setup-python@v6

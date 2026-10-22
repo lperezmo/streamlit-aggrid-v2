@@ -25,7 +25,6 @@ scratchpad.md
 # node
 node_modules/
 package-lock.json
-src/st_aggrid/frontend/.test-build/
 
 # Distribution / packaging
 .Python
@@ -189,7 +188,6 @@ coverage/
 # Lockfiles
 #yarn.lock
 package-lock.json
-!src/st_aggrid/frontend/package-lock.json
 
 ########################################################################
 # JetBrains

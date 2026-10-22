@@ -1,13 +1,13 @@
-import react from "@vitejs/plugin-react";
-import process from "node:process";
-import { defineConfig, UserConfig } from "vite";
+import react from "@vitejs/plugin-react"
+import process from "node:process"
+import { defineConfig, UserConfig } from "vite"
 
 /**
  * Vite configuration for Streamlit AgGrid CCv2 component.
  */
 export default defineConfig(() => {
-  const isProd = process.env.NODE_ENV === "production";
-  const isDev = !isProd;
+  const isProd = process.env.NODE_ENV === "production"
+  const isDev = !isProd
 
   return {
     base: "./",
@@ -38,5 +38,5 @@ export default defineConfig(() => {
         },
       },
     },
-  } satisfies UserConfig;
-});
+  } satisfies UserConfig
+})

@@ -5,16 +5,15 @@ import { formatDuration, intervalToDuration } from "date-fns"
 //TODO: mover formaters to gridOptionsBuilder options
 function dateFormatter(isoString: string, formaterString: string): string {
   try {
-    let date = parseISO(isoString)
+    const date = parseISO(isoString)
     return format(date, formaterString)
   } catch {
     return isoString
-  } finally {
   }
 }
 
 function currencyFormatter(number: any, currencySymbol: string): string {
-  let n = Number.parseFloat(number)
+  const n = Number.parseFloat(number)
   if (!Number.isNaN(n)) {
     return currencySymbol + n.toFixed(2)
   } else {
@@ -23,7 +22,7 @@ function currencyFormatter(number: any, currencySymbol: string): string {
 }
 
 function numberFormatter(number: any, precision: number): string {
-  let n = Number.parseFloat(number)
+  const n = Number.parseFloat(number)
   if (!Number.isNaN(n)) {
     return n.toFixed(precision)
   } else {

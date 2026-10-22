@@ -17,12 +17,16 @@ import {
 import { AgChartsEnterpriseModule } from "ag-charts-enterprise"
 import { AllEnterpriseModule, LicenseManager } from "ag-grid-enterprise"
 
-import debounce from 'lodash/debounce'
-import isEqual from 'lodash/isEqual'
-import omit from 'lodash/omit'
+import debounce from "lodash/debounce"
+import isEqual from "lodash/isEqual"
+import omit from "lodash/omit"
 
 import { ThemeParser, streamlitThemeSignature } from "./ThemeParser"
-import { CustomCollector, LegacyCollector, MinimalCollector } from "./collectors"
+import {
+  CustomCollector,
+  LegacyCollector,
+  MinimalCollector,
+} from "./collectors"
 import type { CollectorContext } from "./collectors"
 
 import "@fontsource/source-sans-pro"
@@ -42,7 +46,7 @@ import { didCsvFormulaPolicyChange } from "./utils/csvExport"
 
 export interface AgGridProps {
   componentData: AgGridDataShape
-  setStateValue: FrontendRendererArgs<AgGridStateShape>['setStateValue']
+  setStateValue: FrontendRendererArgs<AgGridStateShape>["setStateValue"]
   parentElement: Element | ShadowRoot
 }
 
@@ -54,8 +58,8 @@ class AgGrid extends React.Component<AgGridProps, State> {
   private isGridAutoHeightOn: boolean
   private readonly themeParser: ThemeParser = new ThemeParser()
   private lastThemeSignature: string
-  private shouldGridReturn: Function | undefined = undefined
-  private collectGridReturn: Function | undefined = undefined
+  private shouldGridReturn: ((...args: any[]) => any) | undefined = undefined
+  private collectGridReturn: ((...args: any[]) => any) | undefined = undefined
   private eventCleanupFns: Array<() => void> = []
 
   constructor(props: AgGridProps) {
@@ -93,7 +97,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
       ModuleRegistry.registerModules([AllCommunityModule])
     }
 
-    var go = parseGridOptions(cd, props.parentElement)
+    const go = parseGridOptions(cd, props.parentElement)
     go.rowData = parseData(cd)
     // The palette go.theme was just built from. componentDidUpdate compares
     // against this to notice a Streamlit appearance change.
@@ -115,14 +119,16 @@ class AgGrid extends React.Component<AgGridProps, State> {
       }
     }
 
-    this.isGridAutoHeightOn =
-      cd.gridOptions?.domLayout === "autoHeight"
+    this.isGridAutoHeightOn = cd.gridOptions?.domLayout === "autoHeight"
 
     if (!("getRowId" in go)) {
       if (
         Array.isArray(go.rowData) &&
         go.rowData.length > 0 &&
-        go.rowData[0].hasOwnProperty("::auto_unique_id::")
+        Object.prototype.hasOwnProperty.call(
+          go.rowData[0],
+          "::auto_unique_id::"
+        )
       ) {
         go.getRowId = (params: GetRowIdParams) =>
           params.data["::auto_unique_id::"] as string
@@ -170,13 +176,17 @@ class AgGrid extends React.Component<AgGridProps, State> {
           }
         )
         api.addEventListener(eventName, handler)
-        this.eventCleanupFns.push(() => api.removeEventListener(eventName, handler))
+        this.eventCleanupFns.push(() =>
+          api.removeEventListener(eventName, handler)
+        )
       } else {
         const handler = (e: any) => {
           this.returnGridValue(e, element)
         }
         api.addEventListener(element, handler)
-        this.eventCleanupFns.push(() => api.removeEventListener(element, handler))
+        this.eventCleanupFns.push(() =>
+          api.removeEventListener(element, handler)
+        )
       }
       if (this.state.debug) {
         console.log(`Attached grid return event: ${element}`)
@@ -185,7 +195,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
   }
 
   public componentWillUnmount() {
-    this.eventCleanupFns.forEach(fn => fn())
+    this.eventCleanupFns.forEach((fn) => fn())
     this.eventCleanupFns = []
   }
 
@@ -206,18 +216,26 @@ class AgGrid extends React.Component<AgGridProps, State> {
   ) {
     if (this.state.debug) {
       console.log(`refreshing grid from ${streamlitRerunEventTriggerName}`)
-      console.log("dataReturnMode is ", this.props.componentData.data_return_mode)
+      console.log(
+        "dataReturnMode is ",
+        this.props.componentData.data_return_mode
+      )
     }
 
     // Check shouldGridReturn before collecting: skipped events shouldn't pay
     // for a full grid walk.
     if (this.shouldGridReturn) {
-      const shouldReturn = this.shouldGridReturn({ streamlitRerunEventTriggerName, eventData });
+      const shouldReturn = this.shouldGridReturn({
+        streamlitRerunEventTriggerName,
+        eventData,
+      })
       if (!shouldReturn) {
         if (this.state.debug) {
-          console.log(`shouldGridReturn blocked return for event: ${streamlitRerunEventTriggerName}`);
+          console.log(
+            `shouldGridReturn blocked return for event: ${streamlitRerunEventTriggerName}`
+          )
         }
-        return; // Don't send value back
+        return // Don't send value back
       }
     }
 
@@ -266,7 +284,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
   }
 
-  public componentDidUpdate(prevProps: any, prevState: State, snapshot?: any) {
+  public componentDidUpdate(prevProps: any) {
     if (this.state.debug) {
       console.log("********** componentDidUpdate.prevProps")
       console.log(prevProps)
@@ -275,8 +293,14 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
 
     //Check update on grid options. TODO: exclude `initial` options
-    const prevGridOptions = omit(prevProps.componentData?.gridOptions, "rowData")
-    const currGridOptions = omit(this.props.componentData.gridOptions, "rowData")
+    const prevGridOptions = omit(
+      prevProps.componentData?.gridOptions,
+      "rowData"
+    )
+    const currGridOptions = omit(
+      this.props.componentData.gridOptions,
+      "rowData"
+    )
     const csvFormulaPolicyChanged = didCsvFormulaPolicyChange(
       this.props.componentData.allow_unsafe_csv_formulas,
       prevProps.componentData?.allow_unsafe_csv_formulas
@@ -287,7 +311,10 @@ class AgGrid extends React.Component<AgGridProps, State> {
     // defaultCsvExportParams value so switching to unsafe can clear the wrapper
     // installed by an earlier safe render.
     if (!isEqual(prevGridOptions, currGridOptions) || csvFormulaPolicyChanged) {
-      let go = parseGridOptions(this.props.componentData, this.props.parentElement)
+      const go = parseGridOptions(
+        this.props.componentData,
+        this.props.parentElement
+      )
       // Row data travels on its own (and is a raw JSON string when Python used
       // use_json_serialization), so pushing it here would hand AG Grid a
       // string instead of rows. The data_hash block below owns row updates.
@@ -323,7 +350,10 @@ class AgGrid extends React.Component<AgGridProps, State> {
     const serverSyncStragegy = this.props.componentData?.server_sync_strategy
     if (serverSyncStragegy === "client_wins") {
       if (!this.state.isRowDataEdited) {
-        if (this.props.componentData.data_hash !== prevProps.componentData?.data_hash) {
+        if (
+          this.props.componentData.data_hash !==
+          prevProps.componentData?.data_hash
+        ) {
           const rowData = parseData(this.props.componentData) || []
           this.gridApiRef?.updateGridOptions({ rowData })
         }
@@ -335,7 +365,12 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
 
     //check if columnStates changed
-    if (!isEqual(prevProps.componentData?.columns_state, this.props.componentData.columns_state)) {
+    if (
+      !isEqual(
+        prevProps.componentData?.columns_state,
+        this.props.componentData.columns_state
+      )
+    ) {
       const columnsState = this.props.componentData.columns_state
       if (columnsState != null) {
         this.gridApiRef?.applyColumnState({
@@ -366,11 +401,16 @@ class AgGrid extends React.Component<AgGridProps, State> {
         console.warn(
           "server_sync_strategy is 'client_wins' and Data was edited on Grid. Ignoring further changes from Streamlit server."
         )
-        let editedRows = new Set(this.state.editedRows).add(event.node.id)
+        const editedRows = new Set(this.state.editedRows).add(event.node.id)
         this.setState({ isRowDataEdited: true, editedRows: editedRows })
       }
       this.gridApiRef!.addEventListener("cellValueChanged", cellEditHandler)
-      this.eventCleanupFns.push(() => this.gridApiRef?.removeEventListener("cellValueChanged", cellEditHandler))
+      this.eventCleanupFns.push(() =>
+        this.gridApiRef?.removeEventListener(
+          "cellValueChanged",
+          cellEditHandler
+        )
+      )
     }
 
     //Attach events
@@ -385,12 +425,12 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
 
     //If there is any event onGridReady in gridOptions, fire it
-    let { onGridReady } = this.state.gridOptions
+    const { onGridReady } = this.state.gridOptions
     onGridReady && onGridReady(event)
   }
 
   public render = (): ReactNode => {
-    let manualUpdate = this.props.componentData.manual_update === true
+    const manualUpdate = this.props.componentData.manual_update === true
 
     return (
       <div
@@ -402,7 +442,9 @@ class AgGrid extends React.Component<AgGridProps, State> {
           showManualUpdateButton={manualUpdate}
           enabled={this.props.componentData.show_toolbar ?? true}
           showSearch={this.props.componentData.show_search ?? true}
-          showDownloadButton={this.props.componentData.show_download_button ?? true}
+          showDownloadButton={
+            this.props.componentData.show_download_button ?? true
+          }
           onQuickSearchChange={(value) => {
             this.gridApiRef?.setGridOption("quickFilterText", value)
             this.gridApiRef?.hideOverlay()
