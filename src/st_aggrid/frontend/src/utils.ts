@@ -4,7 +4,7 @@ function mapObject(
   fn: (val: any) => any,
   keysToIgnore: string[]
 ): Record<string, any> {
-  let keysToMap = Object.keys(obj)
+  const keysToMap = Object.keys(obj)
   return keysToMap.reduce((res: Record<string, any>, key: string) => {
     if (!keysToIgnore.includes(key)) {
       res[key] = fn(obj[key])

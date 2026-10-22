@@ -6,9 +6,9 @@ import { BaseCollector } from "./BaseCollector"
 import { CollectorContext, CollectorResult } from "./types"
 
 export class CustomCollector extends BaseCollector {
-  private customFunction: Function
+  private customFunction: (...args: any[]) => any
 
-  constructor(customFunction: Function) {
+  constructor(customFunction: (...args: any[]) => any) {
     super()
     this.customFunction = customFunction
   }

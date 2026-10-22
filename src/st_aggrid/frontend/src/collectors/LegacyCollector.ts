@@ -28,7 +28,7 @@ export class LegacyCollector extends BaseCollector {
 
       const result: any = {}
       for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
           result[key] = sanitizeData(obj[key])
         }
       }
@@ -128,7 +128,7 @@ export class LegacyCollector extends BaseCollector {
     if (typeof obj === "object") {
       const filtered: any = {}
       for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
           const value = this.filterSerializableEventData(
             obj[key],
             maxDepth,
@@ -153,7 +153,7 @@ export class LegacyCollector extends BaseCollector {
   async processResponse(context: CollectorContext): Promise<CollectorResult> {
     const { state, componentData, eventData, streamlitRerunEventTriggerName } =
       context
-    let api = state.api
+    const api = state.api
 
     // Create functions for all data collection operations
     const collectNodes = (): any[] => {

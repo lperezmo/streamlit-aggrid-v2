@@ -13,6 +13,8 @@ export function neutralizeCsvFormula(value: any): any {
     return value
   }
 
+  // The control-character range is the point, as the doc comment explains.
+  // eslint-disable-next-line no-control-regex
   const firstSignificant = value.replace(/^[\s\u0000-\u001f]+/, "")[0]
   const startsWithControl = value[0] === "\t" || value[0] === "\r"
 

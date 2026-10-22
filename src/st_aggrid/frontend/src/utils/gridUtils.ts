@@ -4,10 +4,10 @@ const _injectedCSS = new Set<string>()
 const _injectedAssets = new Set<string>()
 
 export function getCSS(styles: CSSDict): string {
-  var css = []
-  for (let selector in styles) {
+  const css = []
+  for (const selector in styles) {
     let style = selector + " {"
-    for (let prop in styles[selector]) {
+    for (const prop in styles[selector]) {
       style += prop + ": " + styles[selector][prop] + ";"
     }
     style += "}"
@@ -17,10 +17,10 @@ export function getCSS(styles: CSSDict): string {
 }
 
 export function addCustomCSS(custom_css: CSSDict): void {
-  var css = getCSS(custom_css)
+  const css = getCSS(custom_css)
   if (_injectedCSS.has(css)) return
   _injectedCSS.add(css)
-  var styleSheet = document.createElement("style")
+  const styleSheet = document.createElement("style")
   styleSheet.type = "text/css"
   styleSheet.innerText = css
   document.head.appendChild(styleSheet)
@@ -45,10 +45,9 @@ export function injectProAssets(jsCode: string, cssCode?: string) {
 export function parseJsCodeFromPython(v: string) {
   const JS_PLACEHOLDER = "::JSCODE::"
   const funcReg = new RegExp(`${JS_PLACEHOLDER}(.*?)${JS_PLACEHOLDER}`, "s")
-  let match = funcReg.exec(v)
+  const match = funcReg.exec(v)
   if (match) {
     const funcStr = match[1]
-    // eslint-disable-next-line
     return new Function("return " + funcStr)()
   } else {
     return v

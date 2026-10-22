@@ -36,15 +36,15 @@ export function parseGridOptions(
 
   //processTheming
   const themeParser = new ThemeParser()
-  let agGridTheme = componentData.theme
+  const agGridTheme = componentData.theme
   gridOptions.theme = themeParser.parse(agGridTheme, parentElement)
 
   return gridOptions
 }
 
 export function parseData(componentData: any) {
-  var rowData = componentData.row_data
-  var gridOptions_rowData = componentData.gridOptions?.rowData
+  const rowData = componentData.row_data
+  const gridOptions_rowData = componentData.gridOptions?.rowData
 
   // If row_data is directly available (JSON records from Python), use it
   if (rowData && Array.isArray(rowData)) {

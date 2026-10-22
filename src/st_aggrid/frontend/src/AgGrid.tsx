@@ -58,8 +58,8 @@ class AgGrid extends React.Component<AgGridProps, State> {
   private isGridAutoHeightOn: boolean
   private readonly themeParser: ThemeParser = new ThemeParser()
   private lastThemeSignature: string
-  private shouldGridReturn: Function | undefined = undefined
-  private collectGridReturn: Function | undefined = undefined
+  private shouldGridReturn: ((...args: any[]) => any) | undefined = undefined
+  private collectGridReturn: ((...args: any[]) => any) | undefined = undefined
   private eventCleanupFns: Array<() => void> = []
 
   constructor(props: AgGridProps) {
@@ -97,7 +97,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
       ModuleRegistry.registerModules([AllCommunityModule])
     }
 
-    var go = parseGridOptions(cd, props.parentElement)
+    const go = parseGridOptions(cd, props.parentElement)
     go.rowData = parseData(cd)
     // The palette go.theme was just built from. componentDidUpdate compares
     // against this to notice a Streamlit appearance change.
@@ -125,7 +125,10 @@ class AgGrid extends React.Component<AgGridProps, State> {
       if (
         Array.isArray(go.rowData) &&
         go.rowData.length > 0 &&
-        go.rowData[0].hasOwnProperty("::auto_unique_id::")
+        Object.prototype.hasOwnProperty.call(
+          go.rowData[0],
+          "::auto_unique_id::"
+        )
       ) {
         go.getRowId = (params: GetRowIdParams) =>
           params.data["::auto_unique_id::"] as string
@@ -281,7 +284,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
   }
 
-  public componentDidUpdate(prevProps: any, prevState: State, snapshot?: any) {
+  public componentDidUpdate(prevProps: any) {
     if (this.state.debug) {
       console.log("********** componentDidUpdate.prevProps")
       console.log(prevProps)
@@ -308,7 +311,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
     // defaultCsvExportParams value so switching to unsafe can clear the wrapper
     // installed by an earlier safe render.
     if (!isEqual(prevGridOptions, currGridOptions) || csvFormulaPolicyChanged) {
-      let go = parseGridOptions(
+      const go = parseGridOptions(
         this.props.componentData,
         this.props.parentElement
       )
@@ -398,7 +401,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
         console.warn(
           "server_sync_strategy is 'client_wins' and Data was edited on Grid. Ignoring further changes from Streamlit server."
         )
-        let editedRows = new Set(this.state.editedRows).add(event.node.id)
+        const editedRows = new Set(this.state.editedRows).add(event.node.id)
         this.setState({ isRowDataEdited: true, editedRows: editedRows })
       }
       this.gridApiRef!.addEventListener("cellValueChanged", cellEditHandler)
@@ -422,12 +425,12 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
 
     //If there is any event onGridReady in gridOptions, fire it
-    let { onGridReady } = this.state.gridOptions
+    const { onGridReady } = this.state.gridOptions
     onGridReady && onGridReady(event)
   }
 
   public render = (): ReactNode => {
-    let manualUpdate = this.props.componentData.manual_update === true
+    const manualUpdate = this.props.componentData.manual_update === true
 
     return (
       <div
