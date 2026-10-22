@@ -1,0 +1,10 @@
+[fmt]
+# Carried over from the old .prettierrc. printWidth 80 is bun fmt's default.
+semi = false
+trailingComma = "es5"
+endOfLine = "lf"
+
+[lint]
+
+[lint.rules]
+"eqeqeq" = ["error", "smart"]

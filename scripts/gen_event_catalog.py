@@ -57,7 +57,7 @@ def _read(relative: str) -> str:
     path = TYPES / relative
     if not path.is_file():
         raise GenerationError(
-            f"{path} is missing. Run `npm ci` in src/st_aggrid/frontend first; "
+            f"{path} is missing. Run `bun install` in src/st_aggrid/frontend first; "
             "the catalog is generated from the installed ag-grid-community."
         )
     return path.read_text(encoding="utf-8")
@@ -134,7 +134,7 @@ def _string_union(relative: str, alias: str) -> set[str]:
 def ag_grid_version() -> str:
     manifest = AG_GRID / "package.json"
     if not manifest.is_file():
-        raise GenerationError(f"{manifest} is missing; run `npm ci` first")
+        raise GenerationError(f"{manifest} is missing; run `bun install` first")
     version = json.loads(manifest.read_text(encoding="utf-8")).get("version")
     if not version:
         raise GenerationError(f"{manifest} declares no version")

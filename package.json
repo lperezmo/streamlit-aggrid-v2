@@ -6,6 +6,6 @@
   "author": "Luis Perez",
   "private": true,
   "scripts": {
-    "build": "cd src/st_aggrid/frontend && npm run build"
+    "build": "cd src/st_aggrid/frontend && bun run build"
   }
 }
