@@ -64,7 +64,11 @@ const AgGridRoot: FrontendRenderer<AgGridStateShape, AgGridDataShape> = (
 
   reactRoot.render(
     <StrictMode>
-      <AgGrid componentData={data} setStateValue={setStateValue} parentElement={parentElement} />
+      <AgGrid
+        componentData={data}
+        setStateValue={setStateValue}
+        parentElement={parentElement}
+      />
     </StrictMode>
   )
 

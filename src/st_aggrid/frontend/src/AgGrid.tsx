@@ -17,12 +17,16 @@ import {
 import { AgChartsEnterpriseModule } from "ag-charts-enterprise"
 import { AllEnterpriseModule, LicenseManager } from "ag-grid-enterprise"
 
-import debounce from 'lodash/debounce'
-import isEqual from 'lodash/isEqual'
-import omit from 'lodash/omit'
+import debounce from "lodash/debounce"
+import isEqual from "lodash/isEqual"
+import omit from "lodash/omit"
 
 import { ThemeParser, streamlitThemeSignature } from "./ThemeParser"
-import { CustomCollector, LegacyCollector, MinimalCollector } from "./collectors"
+import {
+  CustomCollector,
+  LegacyCollector,
+  MinimalCollector,
+} from "./collectors"
 import type { CollectorContext } from "./collectors"
 
 import "@fontsource/source-sans-pro"
@@ -42,7 +46,7 @@ import { didCsvFormulaPolicyChange } from "./utils/csvExport"
 
 export interface AgGridProps {
   componentData: AgGridDataShape
-  setStateValue: FrontendRendererArgs<AgGridStateShape>['setStateValue']
+  setStateValue: FrontendRendererArgs<AgGridStateShape>["setStateValue"]
   parentElement: Element | ShadowRoot
 }
 
@@ -115,8 +119,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
       }
     }
 
-    this.isGridAutoHeightOn =
-      cd.gridOptions?.domLayout === "autoHeight"
+    this.isGridAutoHeightOn = cd.gridOptions?.domLayout === "autoHeight"
 
     if (!("getRowId" in go)) {
       if (
@@ -170,13 +173,17 @@ class AgGrid extends React.Component<AgGridProps, State> {
           }
         )
         api.addEventListener(eventName, handler)
-        this.eventCleanupFns.push(() => api.removeEventListener(eventName, handler))
+        this.eventCleanupFns.push(() =>
+          api.removeEventListener(eventName, handler)
+        )
       } else {
         const handler = (e: any) => {
           this.returnGridValue(e, element)
         }
         api.addEventListener(element, handler)
-        this.eventCleanupFns.push(() => api.removeEventListener(element, handler))
+        this.eventCleanupFns.push(() =>
+          api.removeEventListener(element, handler)
+        )
       }
       if (this.state.debug) {
         console.log(`Attached grid return event: ${element}`)
@@ -185,7 +192,7 @@ class AgGrid extends React.Component<AgGridProps, State> {
   }
 
   public componentWillUnmount() {
-    this.eventCleanupFns.forEach(fn => fn())
+    this.eventCleanupFns.forEach((fn) => fn())
     this.eventCleanupFns = []
   }
 
@@ -206,18 +213,26 @@ class AgGrid extends React.Component<AgGridProps, State> {
   ) {
     if (this.state.debug) {
       console.log(`refreshing grid from ${streamlitRerunEventTriggerName}`)
-      console.log("dataReturnMode is ", this.props.componentData.data_return_mode)
+      console.log(
+        "dataReturnMode is ",
+        this.props.componentData.data_return_mode
+      )
     }
 
     // Check shouldGridReturn before collecting: skipped events shouldn't pay
     // for a full grid walk.
     if (this.shouldGridReturn) {
-      const shouldReturn = this.shouldGridReturn({ streamlitRerunEventTriggerName, eventData });
+      const shouldReturn = this.shouldGridReturn({
+        streamlitRerunEventTriggerName,
+        eventData,
+      })
       if (!shouldReturn) {
         if (this.state.debug) {
-          console.log(`shouldGridReturn blocked return for event: ${streamlitRerunEventTriggerName}`);
+          console.log(
+            `shouldGridReturn blocked return for event: ${streamlitRerunEventTriggerName}`
+          )
         }
-        return; // Don't send value back
+        return // Don't send value back
       }
     }
 
@@ -275,8 +290,14 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
 
     //Check update on grid options. TODO: exclude `initial` options
-    const prevGridOptions = omit(prevProps.componentData?.gridOptions, "rowData")
-    const currGridOptions = omit(this.props.componentData.gridOptions, "rowData")
+    const prevGridOptions = omit(
+      prevProps.componentData?.gridOptions,
+      "rowData"
+    )
+    const currGridOptions = omit(
+      this.props.componentData.gridOptions,
+      "rowData"
+    )
     const csvFormulaPolicyChanged = didCsvFormulaPolicyChange(
       this.props.componentData.allow_unsafe_csv_formulas,
       prevProps.componentData?.allow_unsafe_csv_formulas
@@ -287,7 +308,10 @@ class AgGrid extends React.Component<AgGridProps, State> {
     // defaultCsvExportParams value so switching to unsafe can clear the wrapper
     // installed by an earlier safe render.
     if (!isEqual(prevGridOptions, currGridOptions) || csvFormulaPolicyChanged) {
-      let go = parseGridOptions(this.props.componentData, this.props.parentElement)
+      let go = parseGridOptions(
+        this.props.componentData,
+        this.props.parentElement
+      )
       // Row data travels on its own (and is a raw JSON string when Python used
       // use_json_serialization), so pushing it here would hand AG Grid a
       // string instead of rows. The data_hash block below owns row updates.
@@ -323,7 +347,10 @@ class AgGrid extends React.Component<AgGridProps, State> {
     const serverSyncStragegy = this.props.componentData?.server_sync_strategy
     if (serverSyncStragegy === "client_wins") {
       if (!this.state.isRowDataEdited) {
-        if (this.props.componentData.data_hash !== prevProps.componentData?.data_hash) {
+        if (
+          this.props.componentData.data_hash !==
+          prevProps.componentData?.data_hash
+        ) {
           const rowData = parseData(this.props.componentData) || []
           this.gridApiRef?.updateGridOptions({ rowData })
         }
@@ -335,7 +362,12 @@ class AgGrid extends React.Component<AgGridProps, State> {
     }
 
     //check if columnStates changed
-    if (!isEqual(prevProps.componentData?.columns_state, this.props.componentData.columns_state)) {
+    if (
+      !isEqual(
+        prevProps.componentData?.columns_state,
+        this.props.componentData.columns_state
+      )
+    ) {
       const columnsState = this.props.componentData.columns_state
       if (columnsState != null) {
         this.gridApiRef?.applyColumnState({
@@ -370,7 +402,12 @@ class AgGrid extends React.Component<AgGridProps, State> {
         this.setState({ isRowDataEdited: true, editedRows: editedRows })
       }
       this.gridApiRef!.addEventListener("cellValueChanged", cellEditHandler)
-      this.eventCleanupFns.push(() => this.gridApiRef?.removeEventListener("cellValueChanged", cellEditHandler))
+      this.eventCleanupFns.push(() =>
+        this.gridApiRef?.removeEventListener(
+          "cellValueChanged",
+          cellEditHandler
+        )
+      )
     }
 
     //Attach events
@@ -402,7 +439,9 @@ class AgGrid extends React.Component<AgGridProps, State> {
           showManualUpdateButton={manualUpdate}
           enabled={this.props.componentData.show_toolbar ?? true}
           showSearch={this.props.componentData.show_search ?? true}
-          showDownloadButton={this.props.componentData.show_download_button ?? true}
+          showDownloadButton={
+            this.props.componentData.show_download_button ?? true
+          }
           onQuickSearchChange={(value) => {
             this.gridApiRef?.setGridOption("quickFilterText", value)
             this.gridApiRef?.hideOverlay()

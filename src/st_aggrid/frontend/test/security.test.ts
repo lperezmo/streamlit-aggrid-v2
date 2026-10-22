@@ -94,9 +94,13 @@ test("default protection touches cell values but leaves AG Grid's header resolut
 test("application header callbacks compose with neutralization", () => {
   const column = { getColDef: () => ({ headerName: "=HYPERLINK(A1)" }) }
   const protectedParams = protectCsvExportParams({
-    processHeaderCallback: (params: any) => params.column.getColDef().headerName,
+    processHeaderCallback: (params: any) =>
+      params.column.getColDef().headerName,
   })
-  assert.equal(protectedParams.processHeaderCallback({ column }), "'=HYPERLINK(A1)")
+  assert.equal(
+    protectedParams.processHeaderCallback({ column }),
+    "'=HYPERLINK(A1)"
+  )
 })
 
 test("supplied group-header and row-group callbacks are composed too", () => {
@@ -114,10 +118,15 @@ test("supplied group-header and row-group callbacks are composed too", () => {
 test("allow_unsafe_csv_formulas gates protection on the export format it guards", () => {
   const safe: GridOptions = {}
   applyExportFormulaProtection(safe, false)
-  assert.equal(typeof safe.defaultCsvExportParams?.processCellCallback, "function")
+  assert.equal(
+    typeof safe.defaultCsvExportParams?.processCellCallback,
+    "function"
+  )
 
   // Existing user params survive composition.
-  const withUserParams: GridOptions = { defaultCsvExportParams: { fileName: "a.csv" } }
+  const withUserParams: GridOptions = {
+    defaultCsvExportParams: { fileName: "a.csv" },
+  }
   applyExportFormulaProtection(withUserParams, false)
   assert.equal(withUserParams.defaultCsvExportParams.fileName, "a.csv")
 
@@ -149,12 +158,19 @@ test("every --st-* variable ThemeParser reads is in STREAMLIT_THEME_VARS", () =>
     join(import.meta.dir, "../src/ThemeParser.tsx"),
     "utf8"
   )
-  const referencedVars = [...parserSource.matchAll(/['"`](--st-[a-z0-9-]+)['"`]/g)].map(m => m[1])
+  const referencedVars = [
+    ...parserSource.matchAll(/['"`](--st-[a-z0-9-]+)['"`]/g),
+  ].map((m) => m[1])
 
-  assert.ok(referencedVars.length > 0, "no --st-* literals found; did ThemeParser move?")
+  assert.ok(
+    referencedVars.length > 0,
+    "no --st-* literals found; did ThemeParser move?"
+  )
 
   const declared = new Set<string>(STREAMLIT_THEME_VARS)
-  const undeclared = [...new Set(referencedVars)].filter(name => !declared.has(name))
+  const undeclared = [...new Set(referencedVars)].filter(
+    (name) => !declared.has(name)
+  )
   assert.deepEqual(
     undeclared,
     [],

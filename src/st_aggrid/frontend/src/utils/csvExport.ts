@@ -26,7 +26,9 @@ export function neutralizeCsvFormula(value: any): any {
 /**
  * Compose formula protection after an application's own export callback.
  */
-function composedCellCallback(original: ExportProcessCallback | undefined): ExportProcessCallback {
+function composedCellCallback(
+  original: ExportProcessCallback | undefined
+): ExportProcessCallback {
   return (cellParams: any) => {
     const value = original ? original(cellParams) : cellParams.value
     return neutralizeCsvFormula(value)
@@ -44,11 +46,15 @@ function composedCellCallback(original: ExportProcessCallback | undefined): Expo
  * processHeaderCallback / processGroupHeaderCallback, which this composes
  * neutralization after.
  */
-function composedHeaderCallback(original: ExportProcessCallback | undefined): ExportProcessCallback {
+function composedHeaderCallback(
+  original: ExportProcessCallback | undefined
+): ExportProcessCallback {
   return (headerParams: any) => {
     const value = original ? original(headerParams) : headerParams.value
     const neutralized = neutralizeCsvFormula(value)
-    return typeof neutralized === "string" ? neutralized : String(neutralized ?? "")
+    return typeof neutralized === "string"
+      ? neutralized
+      : String(neutralized ?? "")
   }
 }
 

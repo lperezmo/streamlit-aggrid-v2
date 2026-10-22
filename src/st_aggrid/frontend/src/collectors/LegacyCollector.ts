@@ -8,9 +8,6 @@ import { CollectorContext, CollectorResult } from "./types"
 import { IRowNode } from "ag-grid-community"
 
 export class LegacyCollector extends BaseCollector {
-  
-
-
   private fetch_node_props(n: IRowNode | null): any {
     if (n == null) {
       return null
@@ -21,14 +18,14 @@ export class LegacyCollector extends BaseCollector {
 
     const sanitizeData = (obj: any): any => {
       if (obj === null || obj === undefined) return obj
-      
+
       const type = typeof obj
-      if (type === 'bigint') return Number(obj)
-      if (type === 'function' || type === 'symbol') return undefined
-      if (type !== 'object') return obj
-      
+      if (type === "bigint") return Number(obj)
+      if (type === "function" || type === "symbol") return undefined
+      if (type !== "object") return obj
+
       if (Array.isArray(obj)) return obj.map(sanitizeData)
-      
+
       const result: any = {}
       for (const key in obj) {
         if (obj.hasOwnProperty(key)) {
@@ -41,7 +38,7 @@ export class LegacyCollector extends BaseCollector {
     return {
       id: n.id,
       rowIndex: n.rowIndex,
-      data: sanitizeData({...n.data}),
+      data: sanitizeData({ ...n.data }),
       group: n.group,
       isSelected: n.isSelected(),
       parentPath: parentPath,
@@ -52,37 +49,39 @@ export class LegacyCollector extends BaseCollector {
     if (!node || !node.parent) {
       return ""
     }
-    
+
     // Build path iteratively using row IDs instead of display values
     const pathParts: string[] = []
     let current: IRowNode | null = node.parent
     const visited = new Set<string>() // Use string IDs instead of object references
     let depth = 0
     const MAX_DEPTH = 10 // Safety limit to prevent infinite loops
-    
+
     // Traverse up the parent chain, collecting row IDs
     while (current && depth < MAX_DEPTH) {
       const nodeId = current.id
-      
+
       // Check for circular references using ID
       if (nodeId && visited.has(nodeId)) {
-        console.warn(`Circular reference detected in group hierarchy at node: ${nodeId}`)
+        console.warn(
+          `Circular reference detected in group hierarchy at node: ${nodeId}`
+        )
         break
       }
-      
+
       if (nodeId) {
         visited.add(nodeId)
         pathParts.unshift(nodeId) // Add to beginning to maintain order
       }
-      
+
       current = current.parent
       depth++
     }
-    
+
     if (depth >= MAX_DEPTH) {
       console.warn(`Maximum group hierarchy depth (${MAX_DEPTH}) exceeded`)
     }
-    
+
     return pathParts.join(".")
   }
 
@@ -152,7 +151,8 @@ export class LegacyCollector extends BaseCollector {
    * Process response using the original getGridReturnValue logic
    */
   async processResponse(context: CollectorContext): Promise<CollectorResult> {
-    const { state, componentData, eventData, streamlitRerunEventTriggerName } = context
+    const { state, componentData, eventData, streamlitRerunEventTriggerName } =
+      context
     let api = state.api
 
     // Create functions for all data collection operations

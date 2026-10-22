@@ -7,5 +7,5 @@ export interface State {
   api?: GridApi
   enterprise_features_enabled: boolean
   debug: boolean
-  editedRows: Set<any>;
+  editedRows: Set<any>
 }

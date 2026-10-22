@@ -8,9 +8,9 @@
  * this list.
  */
 export const STREAMLIT_THEME_VARS = [
-    '--st-primary-color',
-    '--st-text-color',
-    '--st-background-color',
-    '--st-secondary-background-color',
-    '--st-font',
+  "--st-primary-color",
+  "--st-text-color",
+  "--st-background-color",
+  "--st-secondary-background-color",
+  "--st-font",
 ] as const
