@@ -4,14 +4,14 @@ Do not edit by hand. Regenerate with::
 
     python scripts/gen_event_catalog.py
 
-Generated from ag-grid-community 36.2.0, the version pinned in
+Generated from ag-grid-community 36.3.0, the version pinned in
 src/st_aggrid/frontend/package.json. CI runs the generator with ``--check``, so
 this file cannot drift from the bundled AG Grid without failing the build.
 """
 
 # The ag-grid-community release these names were read from. Reported in the
 # warning text so a user who hits it can tell which catalog was consulted.
-AG_GRID_VERSION = "36.2.0"
+AG_GRID_VERSION = "36.3.0"
 
 # _PUBLIC_EVENTS: what api.addEventListener publicly supports, and therefore
 # exactly what update_on may name.
@@ -25,6 +25,7 @@ GRID_EVENTS = frozenset(
         "bodyScrollEnd",
         "bulkEditingStarted",
         "bulkEditingStopped",
+        "calculatedColumnChanged",
         "calculatedColumnCreated",
         "calculatedColumnExpressionChanged",
         "calculatedColumnRemoved",
